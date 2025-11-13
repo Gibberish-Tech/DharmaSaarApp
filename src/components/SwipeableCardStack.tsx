@@ -9,12 +9,18 @@ import {
   PanResponder,
   GestureResponderEvent,
   PanResponderGestureState,
+  ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { KnowledgeCard } from './KnowledgeCard';
 import { KnowledgeItem } from '../data/mockKnowledge';
 
 interface SwipeableCardStackProps {
   data: KnowledgeItem[];
+  loading?: boolean;
+  error?: string | null;
+  onFetchNext?: () => Promise<void>;
+  onRefresh?: () => Promise<void>;
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -24,8 +30,13 @@ const SWIPE_VELOCITY_THRESHOLD = 0.5;
 
 export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
   data,
+  loading = false,
+  error = null,
+  onFetchNext,
+  onRefresh,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isFetchingNext, setIsFetchingNext] = useState(false);
   const position = useRef(new Animated.ValueXY()).current;
   const nextCardScale = useRef(new Animated.Value(0.95)).current;
   const nextCardOpacity = useRef(new Animated.Value(0.9)).current;
@@ -45,7 +56,7 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
     extrapolate: 'clamp',
   });
 
-  const nextCard = () => {
+  const nextCard = async () => {
     // Mark that we're transitioning to prevent glitches
     isTransitioning.current = true;
     
@@ -59,12 +70,25 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
     // Update state immediately after resetting values
     // The values are set synchronously, so they'll be correct when React renders
     setCurrentIndex((prevIndex) => {
-      // Infinite scrolling: loop back to 0 when reaching the end
-      const newIndex = (prevIndex + 1) % data.length;
+      const newIndex = prevIndex + 1;
+      
+      // If we're near the end and have onFetchNext, fetch more
+      if (newIndex >= data.length - 2 && onFetchNext && !isFetchingNext) {
+        setIsFetchingNext(true);
+        onFetchNext()
+          .catch((err) => {
+            console.error('Error fetching next shloka:', err);
+          })
+          .finally(() => {
+            setIsFetchingNext(false);
+          });
+      }
+      
       // Reset transition flag after state update completes
       setTimeout(() => {
         isTransitioning.current = false;
       }, 0);
+      
       return newIndex;
     });
   };
@@ -125,6 +149,24 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
       }),
     ]).start();
   };
+
+  // Memoize visible cards to prevent unnecessary recalculations
+  // MUST be called before any early returns to follow Rules of Hooks
+  const visibleCards = useMemo(() => {
+    if (!data || data.length === 0) {
+      return [];
+    }
+    const cards = [];
+    // Only get top card and next card to prevent glitches
+    for (let i = 0; i < 2; i++) {
+      const index = (currentIndex + i) % data.length;
+      cards.push({ item: data[index], index });
+    }
+    return cards;
+  }, [currentIndex, data]);
+  
+  // Reverse the array so top card renders last (appears on top)
+  const reversedCards = useMemo(() => [...visibleCards].reverse(), [visibleCards]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -220,31 +262,52 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
     };
   };
 
-  if (!data || data.length === 0) {
+  // Loading state
+  if (loading && data.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={styles.cardWrapper}>
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No knowledge items available</Text>
-          </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#BDA6F5" />
+          <Text style={styles.loadingText}>Loading shlokas...</Text>
         </View>
       </View>
     );
   }
 
-  // Memoize visible cards to prevent unnecessary recalculations
-  const visibleCards = useMemo(() => {
-    const cards = [];
-    // Only get top card and next card to prevent glitches
-    for (let i = 0; i < 2; i++) {
-      const index = (currentIndex + i) % data.length;
-      cards.push({ item: data[index], index });
-    }
-    return cards;
-  }, [currentIndex, data]);
-  
-  // Reverse the array so top card renders last (appears on top)
-  const reversedCards = useMemo(() => [...visibleCards].reverse(), [visibleCards]);
+  // Error state
+  if (error && data.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Unable to load shlokas</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          {onRefresh && (
+            <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  }
+
+  // Empty state
+  if (!data || data.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.cardWrapper}>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No shlokas available</Text>
+            {onRefresh && (
+              <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
+                <Text style={styles.retryButtonText}>Refresh</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -267,17 +330,29 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
         );
       })}
       {/* Progress indicator */}
-      <View style={styles.progressContainer}>
-        {data.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.progressDot,
-              index === currentIndex && styles.progressDotActive,
-            ]}
-          />
-        ))}
-      </View>
+      {data.length > 0 && (
+        <View style={styles.progressContainer}>
+          {data.slice(0, Math.min(data.length, 10)).map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.progressDot,
+                index === currentIndex && styles.progressDotActive,
+              ]}
+            />
+          ))}
+          {data.length > 10 && (
+            <Text style={styles.progressText}>+{data.length - 10}</Text>
+          )}
+        </View>
+      )}
+      
+      {/* Loading indicator when fetching next */}
+      {isFetchingNext && (
+        <View style={styles.fetchingIndicator}>
+          <ActivityIndicator size="small" color="#BDA6F5" />
+        </View>
+      )}
     </View>
   );
 };
@@ -327,8 +402,63 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: '#666666',
+    color: '#B8B8B8',
     textAlign: 'center',
+    marginBottom: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    color: '#B8B8B8',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    gap: 12,
+  },
+  errorTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  errorText: {
+    color: '#B8B8B8',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#BDA6F5',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  retryButtonText: {
+    color: '#111111',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  progressText: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 10,
+    marginLeft: 4,
+  },
+  fetchingIndicator: {
+    position: 'absolute',
+    top: 100,
+    right: 20,
+    zIndex: 1001,
   },
 });
 
