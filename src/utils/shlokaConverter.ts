@@ -47,10 +47,25 @@ export function convertShlokaToKnowledgeItem(
     category: shloka.book_name,
     bodyText: detailedContent,
     readTime: `${readTime} min read`,
-    // Add Sanskrit text and transliteration as additional metadata
-    author: shloka.transliteration ? 'Transliteration' : undefined,
+    // Store Sanskrit text and transliteration separately for better UI display
+    author: shloka.transliteration || undefined,
     source: shloka.sanskrit_text,
     date: dateString,
+    // Shloka-specific fields for better UI rendering
+    sanskritText: shloka.sanskrit_text,
+    transliteration: shloka.transliteration || undefined,
+    bookName: shloka.book_name,
+    chapterNumber: shloka.chapter_number,
+    verseNumber: shloka.verse_number,
   };
+}
+
+// Extended interface for better shloka-specific data handling
+export interface ShlokaItem extends KnowledgeItem {
+  sanskritText?: string;
+  transliteration?: string;
+  bookName?: string;
+  chapterNumber?: number;
+  verseNumber?: number;
 }
 

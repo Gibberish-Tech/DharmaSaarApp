@@ -1,5 +1,43 @@
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
+# Sanatan App - Hindu Mythology Knowledge
+
+## What is "Sanatan"?
+
+**"Sanatan"** (also "Sanatana") means **eternal, timeless, or everlasting**. **"Sanatan Dharma"** is the original name for what is commonly called "Hinduism" in the West - it translates to **"the eternal way"** or **"the eternal law"** - representing the timeless, universal principles that govern existence.
+
+## What This App Is For
+
+This app makes ancient Hindu wisdom accessible through modern technology. It presents **shlokas** (sacred verses) from timeless Hindu scriptures like:
+
+- **Bhagavad Gita** - The divine song of Lord Krishna
+- **Ramayana** - The epic journey of Lord Rama
+- **Mahabharata** - The great epic of ancient India
+- **Upanishads** - Philosophical texts exploring the nature of reality
+- Other sacred Hindu texts
+
+## The Purpose & Vision
+
+This app serves several important purposes:
+
+1. **Preserving Ancient Wisdom** - Bringing timeless teachings from thousands of years ago into the modern digital age
+2. **Making Sacred Texts Accessible** - Presenting complex philosophical and spiritual concepts in an easy-to-understand, engaging format
+3. **Daily Spiritual Learning** - Enabling users to discover and reflect on sacred verses through a simple, swipeable interface
+4. **Bridging Tradition & Technology** - Connecting ancient wisdom with contemporary life through modern mobile technology
+5. **Cultural Preservation** - Helping preserve and share the rich heritage of Sanatan Dharma with new generations
+
+## What It Stands For
+
+This app represents:
+- **Accessibility** - Making ancient wisdom available to everyone, anywhere
+- **Modern Engagement** - Using contemporary design and interaction patterns to make spiritual learning engaging
+- **Daily Practice** - Encouraging regular reflection and learning through bite-sized, digestible content
+- **Cultural Heritage** - Preserving and sharing the profound teachings of Sanatan Dharma
+
+The swipeable card format transforms reading shlokas into a simple, beautiful daily practice - helping users explore, understand, and reflect on these eternal teachings in a way that fits modern life.
+
+---
+
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.

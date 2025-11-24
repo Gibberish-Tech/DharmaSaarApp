@@ -105,10 +105,19 @@ class ApiService {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorData: ApiError = await response.json().catch(() => ({
+        const errorData: any = await response.json().catch(() => ({
           error: 'Unknown error',
           detail: `HTTP ${response.status}: ${response.statusText}`,
         }));
+        
+        // Handle wrapped error response format: { message, data, errors }
+        const errorMessage = 
+          errorData.errors?.detail || 
+          errorData.errors?.error || 
+          errorData.detail || 
+          errorData.error || 
+          errorData.message ||
+          `HTTP ${response.status}: ${response.statusText}`;
         
         // Retry on server errors (5xx) or network errors
         const shouldRetry = 
@@ -116,11 +125,11 @@ class ApiService {
           retryCount < apiConfig.retry.maxAttempts;
         
         if (shouldRetry) {
-          await new Promise(resolve => setTimeout(resolve, apiConfig.retry.delay));
+          await new Promise<void>(resolve => setTimeout(() => resolve(), apiConfig.retry.delay));
           return this.request<T>(endpoint, options, retryCount + 1);
         }
         
-        throw new Error(errorData.detail || errorData.error || 'Request failed');
+        throw new Error(errorMessage);
       }
 
       return await response.json();
@@ -132,7 +141,7 @@ class ApiService {
       
       // Retry on network errors
       if (retryCount < apiConfig.retry.maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, apiConfig.retry.delay));
+        await new Promise<void>(resolve => setTimeout(() => resolve(), apiConfig.retry.delay));
         return this.request<T>(endpoint, options, retryCount + 1);
       }
       
@@ -154,14 +163,38 @@ class ApiService {
    * Get a random shloka with both summary and detailed explanations
    */
   async getRandomShloka(): Promise<ShlokaWithExplanation> {
-    return this.request<ShlokaWithExplanation>('/api/shlokas/random');
+    const response = await this.request<{
+      message: string;
+      data: ShlokaWithExplanation;
+      errors: any;
+    }>('/api/shlokas/random');
+    
+    // Extract the data field from the wrapped response
+    if (response.data) {
+      return response.data;
+    }
+    
+    // Fallback: if response is already in the expected format
+    return response as unknown as ShlokaWithExplanation;
   }
 
   /**
    * Get a specific shloka by ID with both summary and detailed explanations
    */
   async getShlokaById(shlokaId: string): Promise<ShlokaWithExplanation> {
-    return this.request<ShlokaWithExplanation>(`/api/shlokas/${shlokaId}`);
+    const response = await this.request<{
+      message: string;
+      data: ShlokaWithExplanation;
+      errors: any;
+    }>(`/api/shlokas/${shlokaId}`);
+    
+    // Extract the data field from the wrapped response
+    if (response.data) {
+      return response.data;
+    }
+    
+    // Fallback: if response is already in the expected format
+    return response as unknown as ShlokaWithExplanation;
   }
 }
 

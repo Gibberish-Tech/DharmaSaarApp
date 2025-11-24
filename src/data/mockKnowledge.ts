@@ -5,11 +5,17 @@ export interface KnowledgeItem {
   category?: string;
   detailed_content?: string;
   imageUrl?: string;
-  author?: string;
-  source?: string;
+  author?: string; // Used for transliteration
+  source?: string; // Used for Sanskrit text
   date?: string;
   readTime?: string;
   bodyText?: string;
+  // Shloka-specific fields
+  sanskritText?: string;
+  transliteration?: string;
+  bookName?: string;
+  chapterNumber?: number;
+  verseNumber?: number;
 }
 
 export const mockKnowledgeData: KnowledgeItem[] = [

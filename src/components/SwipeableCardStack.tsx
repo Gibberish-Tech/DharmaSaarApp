@@ -267,8 +267,8 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#BDA6F5" />
-          <Text style={styles.loadingText}>Loading shlokas...</Text>
+          <ActivityIndicator size="large" color="#FF8C42" />
+          <Text style={styles.loadingText}>Loading divine wisdom...</Text>
         </View>
       </View>
     );
@@ -279,11 +279,12 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
     return (
       <View style={styles.container}>
         <View style={styles.errorContainer}>
+          <Text style={styles.omSymbol}>ॐ</Text>
           <Text style={styles.errorTitle}>Unable to load shlokas</Text>
           <Text style={styles.errorText}>{error}</Text>
           {onRefresh && (
             <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
-              <Text style={styles.retryButtonText}>Retry</Text>
+              <Text style={styles.retryButtonText}>Try Again</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -297,7 +298,9 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
       <View style={styles.container}>
         <View style={styles.cardWrapper}>
           <View style={styles.emptyCard}>
+            <Text style={styles.omSymbol}>ॐ</Text>
             <Text style={styles.emptyText}>No shlokas available</Text>
+            <Text style={styles.emptySubtext}>Pull to refresh</Text>
             {onRefresh && (
               <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
                 <Text style={styles.retryButtonText}>Refresh</Text>
@@ -350,7 +353,7 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
       {/* Loading indicator when fetching next */}
       {isFetchingNext && (
         <View style={styles.fetchingIndicator}>
-          <ActivityIndicator size="small" color="#BDA6F5" />
+          <ActivityIndicator size="small" color="#FF8C42" />
         </View>
       )}
     </View>
@@ -360,7 +363,7 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111111',
+    backgroundColor: '#FFF8F0', // Warm cream background
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -386,10 +389,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(139, 46, 61, 0.2)', // Maroon with opacity
   },
   progressDotActive: {
-    backgroundColor: '#E8E8E8',
+    backgroundColor: '#8B2E3D', // Deep maroon
     width: 24,
   },
   emptyCard: {
@@ -399,12 +402,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     padding: 24,
+    borderRadius: 16,
+  },
+  omSymbol: {
+    fontSize: 48,
+    color: '#FF8C42',
+    marginBottom: 16,
   },
   emptyText: {
     fontSize: 18,
-    color: '#B8B8B8',
+    color: '#2A1F1A',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9B8A7F',
+    textAlign: 'center',
+    marginBottom: 24,
   },
   loadingContainer: {
     flex: 1,
@@ -413,9 +429,10 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   loadingText: {
-    color: '#B8B8B8',
+    color: '#6B5B4F',
     fontSize: 16,
     fontWeight: '500',
+    marginTop: 16,
   },
   errorContainer: {
     flex: 1,
@@ -425,34 +442,43 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   errorTitle: {
-    color: '#FFFFFF',
+    color: '#2A1F1A',
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
     marginBottom: 8,
+    marginTop: 16,
   },
   errorText: {
-    color: '#B8B8B8',
+    color: '#6B5B4F',
     fontSize: 14,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+    paddingHorizontal: 32,
+    lineHeight: 20,
   },
   retryButton: {
-    backgroundColor: '#BDA6F5',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: '#FF8C42',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
     marginTop: 8,
+    shadowColor: '#FF8C42',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   retryButtonText: {
-    color: '#111111',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
   progressText: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#9B8A7F',
     fontSize: 10,
     marginLeft: 4,
+    fontWeight: '500',
   },
   fetchingIndicator: {
     position: 'absolute',
