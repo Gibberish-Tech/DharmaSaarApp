@@ -203,3 +203,23 @@ Thumbs.db
 .zshrc
 .bashrc
 .bash_profile
+
+# React Native / Metro
+#
+.react-native/
+.flipper/
+
+# Android - Additional keystore formats
+#
+*.jks
+
+# iOS - Explicit build directories
+#
+ios/build/
+
+# Buck (Facebook's build system - if used)
+#
+.buckd/
+buck-out/
+
+docs/
