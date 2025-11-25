@@ -8,61 +8,106 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { Alert } from 'react-native';
 
 interface ProfileItemProps {
   icon: string;
   title: string;
   subtitle?: string;
   onPress?: () => void;
+  rightElement?: React.ReactNode;
 }
 
-const ProfileItem: React.FC<ProfileItemProps> = ({ icon, title, subtitle, onPress }) => (
-  <TouchableOpacity
-    style={styles.profileItem}
-    onPress={onPress}
-    disabled={!onPress}
-    activeOpacity={0.7}
-  >
-    <Text style={styles.profileIcon}>{icon}</Text>
-    <View style={styles.profileItemContent}>
-      <Text style={styles.profileItemTitle}>{title}</Text>
-      {subtitle && <Text style={styles.profileItemSubtitle}>{subtitle}</Text>}
-    </View>
-    {onPress && <Text style={styles.profileItemArrow}>›</Text>}
-  </TouchableOpacity>
-);
+const ProfileItem: React.FC<ProfileItemProps> = ({ 
+  icon, 
+  title, 
+  subtitle, 
+  onPress,
+  rightElement 
+}) => {
+  const { theme } = useTheme();
+  const dynamicStyles = createStyles(theme);
+
+  return (
+    <TouchableOpacity
+      style={dynamicStyles.profileItem}
+      onPress={onPress}
+      disabled={!onPress && !rightElement}
+      activeOpacity={0.7}
+    >
+      <Text style={dynamicStyles.profileIcon}>{icon}</Text>
+      <View style={dynamicStyles.profileItemContent}>
+        <Text style={dynamicStyles.profileItemTitle}>{title}</Text>
+        {subtitle && <Text style={dynamicStyles.profileItemSubtitle}>{subtitle}</Text>}
+      </View>
+      {rightElement || (onPress && <Text style={dynamicStyles.profileItemArrow}>›</Text>)}
+    </TouchableOpacity>
+  );
+};
 
 export const ProfileScreen: React.FC = () => {
-  // Mock user data - replace with actual user data
-  const user = {
-    name: 'Seeker of Wisdom',
-    email: 'seeker@example.com',
-    joinedDate: 'January 2024',
+  const { theme, themeMode, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
+  const dynamicStyles = createStyles(theme);
+
+  // Format joined date from user.created_at
+  const joinedDate = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      })
+    : 'Recently';
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={dynamicStyles.container} edges={['top']}>
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        style={dynamicStyles.scrollView}
+        contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Header */}
-        <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>ॐ</Text>
+        <View style={dynamicStyles.profileHeader}>
+          <View style={dynamicStyles.avatar}>
+            <Text style={dynamicStyles.avatarText}>ॐ</Text>
           </View>
-          <Text style={styles.profileName}>{user.name}</Text>
-          <Text style={styles.profileEmail}>{user.email}</Text>
-          <Text style={styles.profileJoined}>Member since {user.joinedDate}</Text>
+          <Text style={dynamicStyles.profileName}>{user?.name || 'User'}</Text>
+          <Text style={dynamicStyles.profileEmail}>{user?.email || ''}</Text>
+          <Text style={dynamicStyles.profileJoined}>Member since {joinedDate}</Text>
         </View>
 
         {/* Profile Sections */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          <View style={styles.sectionContent}>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Account</Text>
+          <View style={dynamicStyles.sectionContent}>
             <ProfileItem
               icon="👤"
               title="Edit Profile"
@@ -81,9 +126,9 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Learning</Text>
-          <View style={styles.sectionContent}>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Learning</Text>
+          <View style={dynamicStyles.sectionContent}>
             <ProfileItem
               icon="📊"
               title="Learning Stats"
@@ -102,13 +147,22 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>App</Text>
-          <View style={styles.sectionContent}>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>App</Text>
+          <View style={dynamicStyles.sectionContent}>
             <ProfileItem
-              icon="🌙"
+              icon={themeMode === 'dark' ? '🌙' : '☀️'}
               title="Appearance"
-              subtitle="Light / Dark mode"
+              subtitle={themeMode === 'dark' ? 'Dark mode' : 'Light mode'}
+              rightElement={
+                <Switch
+                  value={themeMode === 'dark'}
+                  onValueChange={toggleTheme}
+                  trackColor={{ false: theme.border, true: theme.primary }}
+                  thumbColor={themeMode === 'dark' ? theme.cardBackground : theme.cardBackground}
+                  ios_backgroundColor={theme.border}
+                />
+              }
             />
             <ProfileItem
               icon="ℹ️"
@@ -124,18 +178,22 @@ export const ProfileScreen: React.FC = () => {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7}>
-          <Text style={styles.logoutButtonText}>Sign Out</Text>
+        <TouchableOpacity
+          style={dynamicStyles.logoutButton}
+          activeOpacity={0.7}
+          onPress={handleLogout}
+        >
+          <Text style={dynamicStyles.logoutButtonText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF8F0',
+    backgroundColor: theme.background,
   },
   scrollView: {
     flex: 1,
@@ -153,11 +211,11 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#FF8C42',
+    backgroundColor: theme.avatarBackground,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#8B2E3D',
+    shadowColor: theme.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -170,17 +228,17 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#2A1F1A',
+    color: theme.text,
     marginBottom: 4,
   },
   profileEmail: {
     fontSize: 16,
-    color: '#6B5B4F',
+    color: theme.textSecondary,
     marginBottom: 4,
   },
   profileJoined: {
     fontSize: 14,
-    color: '#9B8A7F',
+    color: theme.textTertiary,
   },
   section: {
     marginBottom: 32,
@@ -188,15 +246,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2A1F1A',
+    color: theme.text,
     marginBottom: 12,
     paddingHorizontal: 4,
   },
   sectionContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.cardBackground,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#8B2E3D',
+    shadowColor: theme.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -207,7 +265,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5E6D3',
+    borderBottomColor: theme.border,
   },
   profileIcon: {
     fontSize: 24,
@@ -221,26 +279,26 @@ const styles = StyleSheet.create({
   profileItemTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#2A1F1A',
+    color: theme.text,
     marginBottom: 2,
   },
   profileItemSubtitle: {
     fontSize: 14,
-    color: '#9B8A7F',
+    color: theme.textTertiary,
   },
   profileItemArrow: {
     fontSize: 24,
-    color: '#9B8A7F',
+    color: theme.textTertiary,
     marginLeft: 8,
   },
   logoutButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.cardBackground,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
     marginBottom: 20,
-    shadowColor: '#8B2E3D',
+    shadowColor: theme.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -249,7 +307,7 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8B2E3D',
+    color: theme.secondary,
   },
 });
 

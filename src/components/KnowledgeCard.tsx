@@ -9,6 +9,7 @@ import {
 import { KnowledgeItem } from '../data/mockKnowledge';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FormattedText } from './FormattedText';
+import { useTheme } from '../context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -19,15 +20,22 @@ interface KnowledgeCardProps {
 // Simple Om symbol component
 const OmSymbol: React.FC<{ size?: number; color?: string }> = ({ 
   size = 24, 
-  color = '#8B2E3D' 
-}) => (
-  <View style={[styles.omContainer, { width: size, height: size }]}>
-    <Text style={[styles.omSymbol, { fontSize: size, color }]}>ॐ</Text>
-  </View>
-);
+  color 
+}) => {
+  const { theme } = useTheme();
+  const omColor = color || theme.primary;
+  
+  return (
+    <View style={{ justifyContent: 'center', alignItems: 'center', marginHorizontal: 16, width: size, height: size }}>
+      <Text style={{ fontWeight: '400', fontSize: size, color: omColor }}>ॐ</Text>
+    </View>
+  );
+};
 
 export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const dynamicStyles = createStyles(theme);
   
   // Extract shloka-specific data
   const sanskritText = item.sanskritText || item.source || '';
@@ -38,11 +46,11 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
   const explanation = item.bodyText || item.detailed_content || item.content || '';
 
   return (
-    <View style={styles.card}>
+    <View style={dynamicStyles.card}>
       <ScrollView
-        style={styles.scrollView}
+        style={dynamicStyles.scrollView}
         contentContainerStyle={[
-          styles.scrollContent,
+          dynamicStyles.scrollContent,
           { 
             paddingTop: Math.max(insets.top + 20, 40),
             paddingBottom: Math.max(insets.bottom + 20, 40),
@@ -51,8 +59,8 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
         showsVerticalScrollIndicator={false}
       >
         {/* Book Reference - Subtle, top */}
-        <View style={styles.referenceContainer}>
-          <Text style={styles.referenceText}>
+        <View style={dynamicStyles.referenceContainer}>
+          <Text style={dynamicStyles.referenceText}>
             {bookName}
             {chapterNumber && verseNumber && ` • Chapter ${chapterNumber}, Verse ${verseNumber}`}
           </Text>
@@ -60,51 +68,51 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
 
         {/* Sanskrit Text - Prominent, centered */}
         {sanskritText ? (
-          <View style={styles.sanskritContainer}>
-            <Text style={styles.sanskritText}>{sanskritText}</Text>
+          <View style={dynamicStyles.sanskritContainer}>
+            <Text style={dynamicStyles.sanskritText}>{sanskritText}</Text>
           </View>
         ) : null}
 
         {/* Transliteration - Below Sanskrit, italic */}
         {transliteration ? (
-          <View style={styles.transliterationContainer}>
-            <Text style={styles.transliterationText}>{transliteration}</Text>
+          <View style={dynamicStyles.transliterationContainer}>
+            <Text style={dynamicStyles.transliterationText}>{transliteration}</Text>
           </View>
         ) : null}
 
         {/* Decorative Divider with Om */}
-        <View style={styles.dividerContainer}>
-          <View style={styles.dividerLine} />
-          <OmSymbol size={28} color="#FF8C42" />
-          <View style={styles.dividerLine} />
+        <View style={dynamicStyles.dividerContainer}>
+          <View style={dynamicStyles.dividerLine} />
+          <OmSymbol size={28} />
+          <View style={dynamicStyles.dividerLine} />
         </View>
 
         {/* Translation/Explanation - Clear, readable */}
         {explanation ? (
-          <View style={styles.explanationContainer}>
+          <View style={dynamicStyles.explanationContainer}>
             <FormattedText
               text={explanation}
-              style={styles.explanationText}
-              boldStyle={styles.explanationBold}
-              italicStyle={styles.explanationItalic}
+              style={dynamicStyles.explanationText}
+              boldStyle={dynamicStyles.explanationBold}
+              italicStyle={dynamicStyles.explanationItalic}
             />
           </View>
         ) : null}
 
         {/* Spacer at bottom */}
-        <View style={styles.bottomSpacer} />
+        <View style={dynamicStyles.bottomSpacer} />
       </ScrollView>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   card: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.cardBackground,
     borderRadius: 0, // Full screen cards
-    shadowColor: '#000',
+    shadowColor: theme.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -123,7 +131,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   referenceText: {
-    color: '#9B8A7F',
+    color: theme.textTertiary,
     fontSize: 13,
     fontWeight: '500',
     textAlign: 'center',
@@ -136,7 +144,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   sanskritText: {
-    color: '#8B2E3D',
+    color: theme.sanskritText,
     fontSize: 26,
     fontWeight: '400',
     textAlign: 'center',
@@ -149,7 +157,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   transliterationText: {
-    color: '#6B5B4F',
+    color: theme.textSecondary,
     fontSize: 18,
     fontWeight: '400',
     fontStyle: 'italic',
@@ -167,7 +175,7 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E8E0D6',
+    backgroundColor: theme.divider,
   },
   omContainer: {
     justifyContent: 'center',
@@ -182,7 +190,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   explanationText: {
-    color: '#2A1F1A',
+    color: theme.text,
     fontSize: 17,
     fontWeight: '400',
     textAlign: 'left',
@@ -191,11 +199,11 @@ const styles = StyleSheet.create({
   },
   explanationBold: {
     fontWeight: '600',
-    color: '#2A1F1A',
+    color: theme.text,
   },
   explanationItalic: {
     fontStyle: 'italic',
-    color: '#2A1F1A',
+    color: theme.text,
   },
   bottomSpacer: {
     height: 40,

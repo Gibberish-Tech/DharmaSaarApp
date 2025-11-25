@@ -1,14 +1,19 @@
 /**
- * App Navigator - Bottom Tab Navigation
+ * App Navigator - Handles authentication flow and main app navigation
  */
 import React from 'react';
-import { Text } from 'react-native';
+import { Text, View, ActivityIndicator, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ShlokasScreen } from '../screens/ShlokasScreen';
 import { ChatbotScreen } from '../screens/ChatbotScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { LoginScreen } from '../screens/LoginScreen';
+import { SignupScreen } from '../screens/SignupScreen';
 import { FloatingTabBar } from '../components/FloatingTabBar';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export type RootTabParamList = {
   Home: undefined;
@@ -17,9 +22,16 @@ export type RootTabParamList = {
   Profile: undefined;
 };
 
-const Tab = createBottomTabNavigator<RootTabParamList>();
+export type AuthStackParamList = {
+  Login: undefined;
+  Signup: undefined;
+};
 
-export const AppNavigator: React.FC = () => {
+const Tab = createBottomTabNavigator<RootTabParamList>();
+const AuthStack = createStackNavigator<AuthStackParamList>();
+
+// Main Tab Navigator (shown when authenticated)
+const MainTabs: React.FC = () => {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -72,6 +84,48 @@ export const AppNavigator: React.FC = () => {
   );
 };
 
+// Auth Stack Navigator (shown when not authenticated)
+const AuthNavigator: React.FC = () => {
+  return (
+    <AuthStack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <AuthStack.Screen name="Login" component={LoginScreen} />
+      <AuthStack.Screen name="Signup" component={SignupScreen} />
+    </AuthStack.Navigator>
+  );
+};
+
+// Loading screen
+const LoadingScreen: React.FC = () => {
+  const { theme } = useTheme();
+  const dynamicStyles = createStyles(theme);
+
+  return (
+    <View style={dynamicStyles.loadingContainer}>
+      <Text style={dynamicStyles.loadingText}>🕉️</Text>
+      <ActivityIndicator size="large" color={theme.primary} style={dynamicStyles.spinner} />
+    </View>
+  );
+};
+
+// Main App Navigator - switches between auth and main app
+export const AppNavigator: React.FC = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <AuthNavigator />;
+  }
+
+  return <MainTabs />;
+};
+
 // Helper component for tab icons (using emoji for now)
 interface TabIconProps {
   icon: string;
@@ -82,4 +136,22 @@ interface TabIconProps {
 const TabIcon: React.FC<TabIconProps> = ({ icon, size }) => {
   return <Text style={{ fontSize: size || 24 }}>{icon}</Text>;
 };
+
+// Loading screen styles
+const createStyles = (theme: any) =>
+  StyleSheet.create({
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.background,
+    },
+    loadingText: {
+      fontSize: 64,
+      marginBottom: 24,
+    },
+    spinner: {
+      marginTop: 16,
+    },
+  });
 

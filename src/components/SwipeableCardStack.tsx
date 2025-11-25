@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { KnowledgeCard } from './KnowledgeCard';
 import { KnowledgeItem } from '../data/mockKnowledge';
+import { useTheme } from '../context/ThemeContext';
 
 interface SwipeableCardStackProps {
   data: KnowledgeItem[];
@@ -35,6 +36,9 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
   onFetchNext,
   onRefresh,
 }) => {
+  const { theme } = useTheme();
+  const dynamicStyles = createStyles(theme);
+  
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFetchingNext, setIsFetchingNext] = useState(false);
   const position = useRef(new Animated.ValueXY()).current;
@@ -265,10 +269,10 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
   // Loading state
   if (loading && data.length === 0) {
     return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF8C42" />
-          <Text style={styles.loadingText}>Loading divine wisdom...</Text>
+      <View style={dynamicStyles.container}>
+        <View style={dynamicStyles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={dynamicStyles.loadingText}>Loading divine wisdom...</Text>
         </View>
       </View>
     );
@@ -277,14 +281,14 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
   // Error state
   if (error && data.length === 0) {
     return (
-      <View style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.omSymbol}>ॐ</Text>
-          <Text style={styles.errorTitle}>Unable to load shlokas</Text>
-          <Text style={styles.errorText}>{error}</Text>
+      <View style={dynamicStyles.container}>
+        <View style={dynamicStyles.errorContainer}>
+          <Text style={dynamicStyles.omSymbol}>ॐ</Text>
+          <Text style={dynamicStyles.errorTitle}>Unable to load shlokas</Text>
+          <Text style={dynamicStyles.errorText}>{error}</Text>
           {onRefresh && (
-            <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
-              <Text style={styles.retryButtonText}>Try Again</Text>
+            <TouchableOpacity style={dynamicStyles.retryButton} onPress={onRefresh}>
+              <Text style={dynamicStyles.retryButtonText}>Try Again</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -295,15 +299,15 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
   // Empty state
   if (!data || data.length === 0) {
     return (
-      <View style={styles.container}>
-        <View style={styles.cardWrapper}>
-          <View style={styles.emptyCard}>
-            <Text style={styles.omSymbol}>ॐ</Text>
-            <Text style={styles.emptyText}>No shlokas available</Text>
-            <Text style={styles.emptySubtext}>Pull to refresh</Text>
+      <View style={dynamicStyles.container}>
+        <View style={dynamicStyles.cardWrapper}>
+          <View style={dynamicStyles.emptyCard}>
+            <Text style={dynamicStyles.omSymbol}>ॐ</Text>
+            <Text style={dynamicStyles.emptyText}>No shlokas available</Text>
+            <Text style={dynamicStyles.emptySubtext}>Pull to refresh</Text>
             {onRefresh && (
-              <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
-                <Text style={styles.retryButtonText}>Refresh</Text>
+              <TouchableOpacity style={dynamicStyles.retryButton} onPress={onRefresh}>
+                <Text style={dynamicStyles.retryButtonText}>Refresh</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -313,7 +317,7 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={dynamicStyles.container}>
       {reversedCards.map(({ item, index: actualIndex }, reverseIndex) => {
         const isTopCard = actualIndex === currentIndex;
         const isNextCard = actualIndex === (currentIndex + 1) % data.length;
@@ -323,7 +327,7 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
           <Animated.View
             key={`${item.id}-${actualIndex}`}
             style={[
-              styles.cardWrapper,
+              dynamicStyles.cardWrapper,
               cardStyle,
             ]}
             {...(isTopCard ? panResponder.panHandlers : {})}
@@ -334,36 +338,36 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
       })}
       {/* Progress indicator */}
       {data.length > 0 && (
-        <View style={styles.progressContainer}>
+        <View style={dynamicStyles.progressContainer}>
           {data.slice(0, Math.min(data.length, 10)).map((_, index) => (
             <View
               key={index}
               style={[
-                styles.progressDot,
-                index === currentIndex && styles.progressDotActive,
+                dynamicStyles.progressDot,
+                index === currentIndex && dynamicStyles.progressDotActive,
               ]}
             />
           ))}
           {data.length > 10 && (
-            <Text style={styles.progressText}>+{data.length - 10}</Text>
+            <Text style={dynamicStyles.progressText}>+{data.length - 10}</Text>
           )}
         </View>
       )}
       
       {/* Loading indicator when fetching next */}
       {isFetchingNext && (
-        <View style={styles.fetchingIndicator}>
-          <ActivityIndicator size="small" color="#FF8C42" />
+        <View style={dynamicStyles.fetchingIndicator}>
+          <ActivityIndicator size="small" color={theme.primary} />
         </View>
       )}
     </View>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF8F0', // Warm cream background
+    backgroundColor: theme.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -389,10 +393,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(139, 46, 61, 0.2)', // Maroon with opacity
+    backgroundColor: theme.secondary + '33', // Secondary color with opacity
   },
   progressDotActive: {
-    backgroundColor: '#8B2E3D', // Deep maroon
+    backgroundColor: theme.secondary,
     width: 24,
   },
   emptyCard: {
@@ -400,25 +404,25 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.cardBackground,
     padding: 24,
     borderRadius: 16,
   },
   omSymbol: {
     fontSize: 48,
-    color: '#FF8C42',
+    color: theme.primary,
     marginBottom: 16,
   },
   emptyText: {
     fontSize: 18,
-    color: '#2A1F1A',
+    color: theme.text,
     textAlign: 'center',
     marginBottom: 8,
     fontWeight: '500',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#9B8A7F',
+    color: theme.textTertiary,
     textAlign: 'center',
     marginBottom: 24,
   },
@@ -429,7 +433,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   loadingText: {
-    color: '#6B5B4F',
+    color: theme.textSecondary,
     fontSize: 16,
     fontWeight: '500',
     marginTop: 16,
@@ -442,7 +446,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   errorTitle: {
-    color: '#2A1F1A',
+    color: theme.text,
     fontSize: 20,
     fontWeight: '600',
     textAlign: 'center',
@@ -450,7 +454,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   errorText: {
-    color: '#6B5B4F',
+    color: theme.textSecondary,
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 24,
@@ -458,12 +462,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   retryButton: {
-    backgroundColor: '#FF8C42',
+    backgroundColor: theme.primary,
     paddingHorizontal: 32,
     paddingVertical: 14,
     borderRadius: 12,
     marginTop: 8,
-    shadowColor: '#FF8C42',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -475,7 +479,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   progressText: {
-    color: '#9B8A7F',
+    color: theme.textTertiary,
     fontSize: 10,
     marginLeft: 4,
     fontWeight: '500',

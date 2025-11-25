@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -20,14 +21,19 @@ interface StatCardProps {
   icon?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, icon }) => (
-  <View style={styles.statCard}>
-    {icon && <Text style={styles.statIcon}>{icon}</Text>}
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statTitle}>{title}</Text>
-    {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
-  </View>
-);
+const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, icon }) => {
+  const { theme } = useTheme();
+  const dynamicStyles = createStyles(theme);
+  
+  return (
+    <View style={dynamicStyles.statCard}>
+      {icon && <Text style={dynamicStyles.statIcon}>{icon}</Text>}
+      <Text style={dynamicStyles.statValue}>{value}</Text>
+      <Text style={dynamicStyles.statTitle}>{title}</Text>
+      {subtitle && <Text style={dynamicStyles.statSubtitle}>{subtitle}</Text>}
+    </View>
+  );
+};
 
 interface ProgressBarProps {
   label: string;
@@ -36,23 +42,29 @@ interface ProgressBarProps {
   color?: string;
 }
 
-const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, max, color = '#FF8C42' }) => {
+const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, max, color }) => {
+  const { theme } = useTheme();
+  const dynamicStyles = createStyles(theme);
   const percentage = Math.min((current / max) * 100, 100);
+  const barColor = color || theme.primary;
   
   return (
-    <View style={styles.progressContainer}>
-      <View style={styles.progressHeader}>
-        <Text style={styles.progressLabel}>{label}</Text>
-        <Text style={styles.progressText}>{current} / {max}</Text>
+    <View style={dynamicStyles.progressContainer}>
+      <View style={dynamicStyles.progressHeader}>
+        <Text style={dynamicStyles.progressLabel}>{label}</Text>
+        <Text style={dynamicStyles.progressText}>{current} / {max}</Text>
       </View>
-      <View style={styles.progressBarBackground}>
-        <View style={[styles.progressBarFill, { width: `${percentage}%`, backgroundColor: color }]} />
+      <View style={dynamicStyles.progressBarBackground}>
+        <View style={[dynamicStyles.progressBarFill, { width: `${percentage}%`, backgroundColor: barColor }]} />
       </View>
     </View>
   );
 };
 
 export const HomeScreen: React.FC = () => {
+  const { theme } = useTheme();
+  const dynamicStyles = createStyles(theme);
+
   // Mock data - replace with actual data from backend/state management
   const stats = {
     totalShlokasRead: 42,
@@ -70,37 +82,36 @@ export const HomeScreen: React.FC = () => {
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={dynamicStyles.container} edges={['top']}>
       <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        style={dynamicStyles.scrollView}
+        contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.greeting}>नमस्ते</Text>
-          <Text style={styles.subGreeting}>Welcome back, seeker of wisdom</Text>
+        <View style={dynamicStyles.header}>
+          <Text style={dynamicStyles.greeting}>नमस्ते</Text>
+          <Text style={dynamicStyles.subGreeting}>Welcome back, seeker of wisdom</Text>
         </View>
 
         {/* Level Card */}
-        <View style={styles.levelCard}>
-          <View style={styles.levelHeader}>
-            <Text style={styles.levelLabel}>Level {stats.level}</Text>
-            <Text style={styles.levelIcon}>📖</Text>
+        <View style={dynamicStyles.levelCard}>
+          <View style={dynamicStyles.levelHeader}>
+            <Text style={dynamicStyles.levelLabel}>Level {stats.level}</Text>
+            <Text style={dynamicStyles.levelIcon}>📖</Text>
           </View>
           <ProgressBar
             label="Experience"
             current={stats.experience}
             max={stats.experienceToNextLevel}
-            color="#FF8C42"
           />
-          <Text style={styles.levelSubtext}>
+          <Text style={dynamicStyles.levelSubtext}>
             {stats.experienceToNextLevel - stats.experience} XP to next level
           </Text>
         </View>
 
         {/* Stats Grid */}
-        <View style={styles.statsGrid}>
+        <View style={dynamicStyles.statsGrid}>
           <StatCard
             title="Shlokas Read"
             value={stats.totalShlokasRead}
@@ -122,26 +133,26 @@ export const HomeScreen: React.FC = () => {
         </View>
 
         {/* Recent Achievements */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Achievements</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Recent Achievements</Text>
           {recentAchievements.map((achievement) => (
-            <View key={achievement.id} style={styles.achievementCard}>
-              <Text style={styles.achievementIcon}>{achievement.icon}</Text>
-              <View style={styles.achievementContent}>
-                <Text style={styles.achievementTitle}>{achievement.title}</Text>
-                <Text style={styles.achievementDescription}>{achievement.description}</Text>
+            <View key={achievement.id} style={dynamicStyles.achievementCard}>
+              <Text style={dynamicStyles.achievementIcon}>{achievement.icon}</Text>
+              <View style={dynamicStyles.achievementContent}>
+                <Text style={dynamicStyles.achievementTitle}>{achievement.title}</Text>
+                <Text style={dynamicStyles.achievementDescription}>{achievement.description}</Text>
               </View>
             </View>
           ))}
         </View>
 
         {/* Growth Chart Placeholder */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Journey</Text>
-          <View style={styles.chartPlaceholder}>
-            <Text style={styles.chartIcon}>📈</Text>
-            <Text style={styles.chartText}>Your learning progress over time</Text>
-            <Text style={styles.chartSubtext}>Chart coming soon</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Your Journey</Text>
+          <View style={dynamicStyles.chartPlaceholder}>
+            <Text style={dynamicStyles.chartIcon}>📈</Text>
+            <Text style={dynamicStyles.chartText}>Your learning progress over time</Text>
+            <Text style={dynamicStyles.chartSubtext}>Chart coming soon</Text>
           </View>
         </View>
       </ScrollView>
@@ -149,10 +160,10 @@ export const HomeScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF8F0',
+    backgroundColor: theme.background,
   },
   scrollView: {
     flex: 1,
@@ -167,19 +178,19 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 32,
     fontWeight: '600',
-    color: '#2A1F1A',
+    color: theme.text,
     marginBottom: 4,
   },
   subGreeting: {
     fontSize: 16,
-    color: '#6B5B4F',
+    color: theme.textSecondary,
   },
   levelCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.cardBackground,
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
-    shadowColor: '#8B2E3D',
+    shadowColor: theme.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -194,14 +205,14 @@ const styles = StyleSheet.create({
   levelLabel: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#2A1F1A',
+    color: theme.text,
   },
   levelIcon: {
     fontSize: 32,
   },
   levelSubtext: {
     fontSize: 12,
-    color: '#9B8A7F',
+    color: theme.textTertiary,
     marginTop: 8,
     textAlign: 'center',
   },
@@ -213,11 +224,11 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.cardBackground,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#8B2E3D',
+    shadowColor: theme.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -230,18 +241,18 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#FF8C42',
+    color: theme.primary,
     marginBottom: 4,
   },
   statTitle: {
     fontSize: 12,
-    color: '#6B5B4F',
+    color: theme.textSecondary,
     textAlign: 'center',
     fontWeight: '500',
   },
   statSubtitle: {
     fontSize: 10,
-    color: '#9B8A7F',
+    color: theme.textTertiary,
     marginTop: 2,
   },
   section: {
@@ -250,17 +261,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#2A1F1A',
+    color: theme.text,
     marginBottom: 16,
   },
   achievementCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.cardBackground,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     alignItems: 'center',
-    shadowColor: '#8B2E3D',
+    shadowColor: theme.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -276,21 +287,21 @@ const styles = StyleSheet.create({
   achievementTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2A1F1A',
+    color: theme.text,
     marginBottom: 4,
   },
   achievementDescription: {
     fontSize: 14,
-    color: '#6B5B4F',
+    color: theme.textSecondary,
   },
   chartPlaceholder: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.cardBackground,
     borderRadius: 12,
     padding: 40,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 200,
-    shadowColor: '#8B2E3D',
+    shadowColor: theme.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -302,13 +313,13 @@ const styles = StyleSheet.create({
   },
   chartText: {
     fontSize: 16,
-    color: '#2A1F1A',
+    color: theme.text,
     fontWeight: '500',
     marginBottom: 4,
   },
   chartSubtext: {
     fontSize: 14,
-    color: '#9B8A7F',
+    color: theme.textTertiary,
   },
   progressContainer: {
     marginBottom: 8,
@@ -320,17 +331,17 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 14,
-    color: '#6B5B4F',
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   progressText: {
     fontSize: 14,
-    color: '#6B5B4F',
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   progressBarBackground: {
     height: 8,
-    backgroundColor: '#F5E6D3',
+    backgroundColor: theme.border,
     borderRadius: 4,
     overflow: 'hidden',
   },

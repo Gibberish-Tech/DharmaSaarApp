@@ -12,6 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { useTheme } from '../context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = 70;
@@ -22,6 +23,9 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({
   descriptors,
   navigation,
 }) => {
+  const { theme } = useTheme();
+  const dynamicStyles = createStyles(theme);
+  
   const scaleAnimations = useRef(
     state.routes.map(() => new Animated.Value(1))
   ).current;
@@ -78,7 +82,7 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({
   return (
     <Animated.View
       style={[
-        styles.tabBarContainer,
+        dynamicStyles.tabBarContainer,
         {
           opacity: tabBarOpacity,
           transform: [
@@ -95,7 +99,7 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({
         },
       ]}
     >
-      <View style={styles.tabBar}>
+      <View style={dynamicStyles.tabBar}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const labelValue =
@@ -107,7 +111,7 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({
           
           // Handle label - it can be a string or a function
           const label = typeof labelValue === 'function'
-            ? labelValue({ focused: state.index === index, color: state.index === index ? '#FF8C42' : '#9B8A7F', position: 'below-icon' as any, children: route.name })
+            ? labelValue({ focused: state.index === index, color: state.index === index ? theme.primary : theme.textTertiary, position: 'below-icon' as any, children: route.name })
             : labelValue;
 
           const isFocused = state.index === index;
@@ -115,7 +119,7 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({
           const icon = options.tabBarIcon
             ? options.tabBarIcon({
                 focused: isFocused,
-                color: isFocused ? '#FF8C42' : '#9B8A7F',
+                color: isFocused ? theme.primary : theme.textTertiary,
                 size: 24,
               })
             : null;
@@ -127,12 +131,12 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({
               accessibilityState={isFocused ? { selected: true } : {}}
               accessibilityLabel={options.tabBarAccessibilityLabel}
               onPress={() => handleTabPress(route, index)}
-              style={styles.tab}
+              style={dynamicStyles.tab}
               activeOpacity={0.7}
             >
               <Animated.View
                 style={[
-                  styles.tabContent,
+                  dynamicStyles.tabContent,
                   {
                     transform: [{ scale: scaleAnimations[index] }],
                   },
@@ -140,8 +144,8 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({
               >
                 <Animated.View
                   style={[
-                    styles.iconContainer,
-                    isFocused && styles.iconContainerActive,
+                    dynamicStyles.iconContainer,
+                    isFocused && dynamicStyles.iconContainerActive,
                     {
                       transform: [
                         {
@@ -160,8 +164,8 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({
                 </Animated.View>
                 <Text
                   style={[
-                    styles.label,
-                    isFocused && styles.labelActive,
+                    dynamicStyles.label,
+                    isFocused && dynamicStyles.labelActive,
                   ]}
                 >
                   {label}
@@ -169,7 +173,7 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({
                 {isFocused && (
                   <Animated.View
                     style={[
-                      styles.activeIndicator,
+                      dynamicStyles.activeIndicator,
                       {
                         opacity: scaleAnimations[index].interpolate({
                           inputRange: [0.85, 1],
@@ -188,7 +192,7 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
     bottom: FLOATING_MARGIN,
@@ -199,12 +203,12 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.cardBackground,
     borderRadius: 24,
     height: TAB_BAR_HEIGHT,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    shadowColor: '#8B2E3D',
+    shadowColor: theme.shadow,
     shadowOffset: {
       width: 0,
       height: 6,
@@ -213,7 +217,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 12,
     borderWidth: 1,
-    borderColor: '#F5E6D3',
+    borderColor: theme.border,
   },
   tab: {
     flex: 1,
@@ -236,16 +240,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   iconContainerActive: {
-    backgroundColor: '#FFF5E6',
+    backgroundColor: theme.activeTabBackground,
   },
   label: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#9B8A7F',
+    color: theme.textTertiary,
     marginTop: 2,
   },
   labelActive: {
-    color: '#FF8C42',
+    color: theme.primary,
     fontWeight: '600',
   },
   activeIndicator: {
@@ -254,7 +258,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#FF8C42',
+    backgroundColor: theme.primary,
   },
 });
 

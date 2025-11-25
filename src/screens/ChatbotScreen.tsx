@@ -8,26 +8,30 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
 
 export const ChatbotScreen: React.FC = () => {
+  const { theme } = useTheme();
+  const dynamicStyles = createStyles(theme);
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.content}>
-        <Text style={styles.icon}>💬</Text>
-        <Text style={styles.title}>Chatbot</Text>
-        <Text style={styles.subtitle}>
+    <SafeAreaView style={dynamicStyles.container} edges={['top']}>
+      <View style={dynamicStyles.content}>
+        <Text style={dynamicStyles.icon}>💬</Text>
+        <Text style={dynamicStyles.title}>Chatbot</Text>
+        <Text style={dynamicStyles.subtitle}>
           Your AI assistant for questions about Sanatan Dharma
         </Text>
-        <Text style={styles.comingSoon}>Coming Soon</Text>
+        <Text style={dynamicStyles.comingSoon}>Coming Soon</Text>
       </View>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF8F0',
+    backgroundColor: theme.background,
   },
   content: {
     flex: 1,
@@ -42,12 +46,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '600',
-    color: '#2A1F1A',
+    color: theme.text,
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B5B4F',
+    color: theme.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
     paddingHorizontal: 32,
@@ -55,7 +59,7 @@ const styles = StyleSheet.create({
   },
   comingSoon: {
     fontSize: 14,
-    color: '#9B8A7F',
+    color: theme.textTertiary,
     fontStyle: 'italic',
   },
 });

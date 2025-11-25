@@ -2,7 +2,7 @@
  * FormattedText - Component to render text with basic markdown formatting
  * Supports: **bold**, *italic*, and line breaks
  */
-import React from 'react';
+import React, { useRef } from 'react';
 import { Text, StyleSheet, TextStyle } from 'react-native';
 
 interface FormattedTextProps {
@@ -20,11 +20,15 @@ export const FormattedText: React.FC<FormattedTextProps> = ({
   boldStyle,
   italicStyle,
 }) => {
+  // Generate a unique ID for this component instance
+  const instanceIdRef = useRef(Math.random().toString(36).substr(2, 9));
+  const instanceId = instanceIdRef.current;
+
   // Parse markdown and create nested Text components
-  const parseMarkdown = (input: string): React.ReactNode[] => {
+  const parseMarkdown = (input: string, lineIndex: number, keyPrefix: string): React.ReactNode[] => {
     const parts: React.ReactNode[] = [];
     let currentIndex = 0;
-    let key = 0;
+    let partKey = 0;
 
     // Regex to match **bold**, *italic*, and combinations
     // Order matters: bold+italic first, then bold, then italic
@@ -76,21 +80,30 @@ export const FormattedText: React.FC<FormattedTextProps> = ({
       if (match.start > currentIndex) {
         const beforeText = input.substring(currentIndex, match.start);
         if (beforeText) {
-          parts.push(beforeText);
+          // Create a unique key for plain text parts
+          parts.push(
+            <Text key={`${keyPrefix}-${lineIndex}-${partKey++}`}>
+              {beforeText}
+            </Text>
+          );
         }
       }
 
       // Add the formatted text as a nested Text component
-      const textStyle: TextStyle[] = [baseStyle, style];
+      const textStyle: TextStyle[] = [];
+      if (baseStyle) textStyle.push(baseStyle);
+      if (style) textStyle.push(style);
       if (match.type === 'bold' || match.type === 'boldItalic') {
-        textStyle.push(styles.bold, boldStyle);
+        textStyle.push(styles.bold);
+        if (boldStyle) textStyle.push(boldStyle);
       }
       if (match.type === 'italic' || match.type === 'boldItalic') {
-        textStyle.push(styles.italic, italicStyle);
+        textStyle.push(styles.italic);
+        if (italicStyle) textStyle.push(italicStyle);
       }
 
       parts.push(
-        <Text key={key++} style={textStyle}>
+        <Text key={`${keyPrefix}-${lineIndex}-${partKey++}`} style={textStyle}>
           {match.text}
         </Text>
       );
@@ -102,7 +115,11 @@ export const FormattedText: React.FC<FormattedTextProps> = ({
     if (currentIndex < input.length) {
       const remainingText = input.substring(currentIndex);
       if (remainingText) {
-        parts.push(remainingText);
+        parts.push(
+          <Text key={`${keyPrefix}-${lineIndex}-${partKey++}`}>
+            {remainingText}
+          </Text>
+        );
       }
     }
 
@@ -114,10 +131,14 @@ export const FormattedText: React.FC<FormattedTextProps> = ({
   const result: React.ReactNode[] = [];
 
   lines.forEach((line, lineIndex) => {
-    const parsedLine = parseMarkdown(line);
+    const parsedLine = parseMarkdown(line, lineIndex, instanceId);
     result.push(...parsedLine);
     if (lineIndex < lines.length - 1) {
-      result.push('\n');
+      result.push(
+        <Text key={`${instanceId}-newline-${lineIndex}`}>
+          {'\n'}
+        </Text>
+      );
     }
   });
 

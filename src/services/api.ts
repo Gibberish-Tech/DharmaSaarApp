@@ -38,9 +38,24 @@ export interface ApiError {
 
 class ApiService {
   private baseUrl: string;
+  private accessToken: string | null = null;
 
   constructor() {
     this.baseUrl = apiConfig.baseUrl;
+  }
+
+  /**
+   * Set the access token for authenticated requests
+   */
+  setAccessToken(token: string | null): void {
+    this.accessToken = token;
+  }
+
+  /**
+   * Get the current access token
+   */
+  getAccessToken(): string | null {
+    return this.accessToken;
   }
 
   /**
@@ -93,13 +108,21 @@ class ApiService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), apiConfig.timeout);
 
+      // Build headers with authentication if token is available
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      };
+
+      // Add authorization header if access token is available
+      if (this.accessToken) {
+        headers['Authorization'] = `Bearer ${this.accessToken}`;
+      }
+
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
+        headers,
       });
 
       clearTimeout(timeoutId);
@@ -195,6 +218,92 @@ class ApiService {
     
     // Fallback: if response is already in the expected format
     return response as unknown as ShlokaWithExplanation;
+  }
+
+  /**
+   * User signup
+   */
+  async signup(
+    name: string,
+    email: string,
+    password: string,
+    passwordConfirm: string
+  ): Promise<{ user: { id: string; name: string; email: string; created_at?: string }; tokens: { access: string; refresh: string } }> {
+    const response = await this.request<{
+      message: string;
+      data: {
+        user: { id: string; name: string; email: string; created_at?: string };
+        tokens: { access: string; refresh: string };
+      };
+      errors: any;
+    }>('/api/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        password_confirm: passwordConfirm,
+      }),
+    });
+
+    if (response.data) {
+      return response.data;
+    }
+
+    throw new Error(response.errors?.detail || 'Signup failed');
+  }
+
+  /**
+   * User login
+   */
+  async login(
+    email: string,
+    password: string
+  ): Promise<{ user: { id: string; name: string; email: string; created_at?: string }; tokens: { access: string; refresh: string } }> {
+    const response = await this.request<{
+      message: string;
+      data: {
+        user: { id: string; name: string; email: string; created_at?: string };
+        tokens: { access: string; refresh: string };
+      };
+      errors: any;
+    }>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+
+    if (response.data) {
+      return response.data;
+    }
+
+    throw new Error(response.errors?.detail || 'Login failed');
+  }
+
+  /**
+   * Refresh access token
+   */
+  async refreshToken(refreshToken: string): Promise<string> {
+    const response = await this.request<{
+      message: string;
+      data: {
+        access: string;
+      };
+      errors: any;
+    }>('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({
+        refresh: refreshToken,
+      }),
+    });
+
+    if (response.data?.access) {
+      return response.data.access;
+    }
+
+    throw new Error(response.errors?.detail || 'Token refresh failed');
   }
 }
 
