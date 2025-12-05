@@ -1,3 +1,14 @@
+export interface WordByWordItem {
+  sanskrit: string;
+  transliteration: string;
+  meaning: string;
+}
+
+export interface ModernExample {
+  category: string;
+  description: string;
+}
+
 export interface KnowledgeItem {
   id: string;
   title: string;
@@ -16,6 +27,19 @@ export interface KnowledgeItem {
   bookName?: string;
   chapterNumber?: number;
   verseNumber?: number;
+  // Explanation fields for backward compatibility
+  summaryExplanation?: string;
+  detailedExplanation?: string;
+  // Structured fields from explanation
+  summary?: string;
+  detailedMeaning?: string;
+  detailedExplanation?: string;
+  whyThisMatters?: string;
+  context?: string;
+  wordByWord?: WordByWordItem[];
+  modernExamples?: ModernExample[];
+  themes?: string[];
+  reflectionPrompt?: string;
 }
 
 export const mockKnowledgeData: KnowledgeItem[] = [

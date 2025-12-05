@@ -7,20 +7,21 @@ import { KnowledgeItem } from '../data/mockKnowledge';
 export function convertShlokaToKnowledgeItem(
   shlokaData: ShlokaWithExplanation
 ): KnowledgeItem {
-  const { shloka, summary, detailed } = shlokaData;
+  const { shloka, explanation } = shlokaData;
 
   // Create title from shloka reference
   const title = `${shloka.book_name} - Chapter ${shloka.chapter_number}, Verse ${shloka.verse_number}`;
 
-  // Use summary explanation text as content, or fallback to transliteration/sanskrit
+  // Use explanation text or summary as content, or fallback to transliteration/sanskrit
   const content =
-    summary?.explanation_text ||
+    explanation?.explanation_text ||
+    explanation?.summary ||
     shloka.transliteration ||
     shloka.sanskrit_text ||
     '';
 
-  // For detailed content, use the detailed explanation, or fallback to summary
-  const detailedContent = detailed?.explanation_text || summary?.explanation_text || content;
+  // For detailed content, use the explanation text or detailed explanation
+  const detailedContent = explanation?.explanation_text || explanation?.detailed_explanation || content;
 
   // Calculate read time (rough estimate: 200 words per minute)
   const wordCount = content.split(/\s+/).length;
@@ -38,6 +39,12 @@ export function convertShlokaToKnowledgeItem(
         month: 'short',
         day: 'numeric',
       });
+
+  // Word-by-word: prefer from shloka
+  const wordByWord = 
+    (shloka.word_by_word && Array.isArray(shloka.word_by_word) && shloka.word_by_word.length > 0) 
+      ? shloka.word_by_word 
+      : undefined;
 
   return {
     id: shloka.id,
@@ -57,6 +64,18 @@ export function convertShlokaToKnowledgeItem(
     bookName: shloka.book_name,
     chapterNumber: shloka.chapter_number,
     verseNumber: shloka.verse_number,
+    // Store explanation text for backward compatibility
+    summaryExplanation: explanation?.explanation_text || explanation?.summary || undefined,
+    // Structured fields from explanation
+    summary: explanation?.summary || undefined,
+    detailedMeaning: explanation?.detailed_meaning || undefined,
+    detailedExplanation: explanation?.detailed_explanation || undefined,
+    whyThisMatters: explanation?.why_this_matters || undefined,
+    context: explanation?.context || undefined,
+    wordByWord: wordByWord,
+    modernExamples: explanation?.modern_examples || undefined,
+    themes: explanation?.themes || undefined,
+    reflectionPrompt: explanation?.reflection_prompt || undefined,
   };
 }
 

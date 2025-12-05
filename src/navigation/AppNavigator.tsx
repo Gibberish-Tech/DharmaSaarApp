@@ -12,6 +12,7 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { SignupScreen } from '../screens/SignupScreen';
 import { FloatingTabBar } from '../components/FloatingTabBar';
+import { AuthWrapper } from '../components/AuthWrapper';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -115,15 +116,24 @@ const LoadingScreen: React.FC = () => {
 export const AppNavigator: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
+  // Show loading screen while initial auth state is being loaded
   if (isLoading) {
     return <LoadingScreen />;
   }
 
-  if (!isAuthenticated) {
-    return <AuthNavigator />;
-  }
+  return (
+    <>
+      {/* Main app tabs - only shown when authenticated */}
+      <AuthWrapper requireAuth={true}>
+        <MainTabs />
+      </AuthWrapper>
 
-  return <MainTabs />;
+      {/* Auth screens - only shown when NOT authenticated */}
+      <AuthWrapper requireAuth={false}>
+        <AuthNavigator />
+      </AuthWrapper>
+    </>
+  );
 };
 
 // Helper component for tab icons (using emoji for now)

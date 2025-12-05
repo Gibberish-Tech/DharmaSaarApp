@@ -1,16 +1,23 @@
 /**
  * Home Screen - Gamified learning progress and upgrades
  */
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Dimensions,
+  ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { apiService } from '../services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -63,23 +70,130 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, max, color })
 
 export const HomeScreen: React.FC = () => {
   const { theme } = useTheme();
+  const { isAuthenticated } = useAuth();
   const dynamicStyles = createStyles(theme);
+  
+  const [stats, setStats] = useState({
+    totalShlokasRead: 0,
+    totalBooksRead: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+    totalStreakDays: 0,
+    streakFreezeAvailable: false,
+    level: 1,
+    experience: 0,
+    experienceToNextLevel: 100,
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [freezeLoading, setFreezeLoading] = useState(false);
 
-  // Mock data - replace with actual data from backend/state management
-  const stats = {
-    totalShlokasRead: 42,
-    currentStreak: 7,
-    level: 5,
-    experience: 1250,
-    experienceToNextLevel: 2000,
-    achievements: 8,
+  const loadData = async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setError(null);
+      const statsData = await apiService.getUserStats();
+
+      setStats({
+        totalShlokasRead: statsData.total_shlokas_read,
+        totalBooksRead: statsData.total_books_read || 0,
+        currentStreak: statsData.current_streak,
+        longestStreak: statsData.longest_streak || 0,
+        totalStreakDays: statsData.total_streak_days || 0,
+        streakFreezeAvailable: statsData.streak_freeze_available || false,
+        level: statsData.level,
+        experience: statsData.experience,
+        experienceToNextLevel: statsData.xp_for_next_level,
+      });
+    } catch (err) {
+      console.error('Error loading home data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const recentAchievements = [
-    { id: '1', title: 'First Steps', description: 'Read your first shloka', icon: '🌟' },
-    { id: '2', title: 'Week Warrior', description: '7 day reading streak', icon: '🔥' },
-    { id: '3', title: 'Scholar', description: 'Read 25 shlokas', icon: '📚' },
-  ];
+  useEffect(() => {
+    loadData();
+  }, [isAuthenticated]);
+
+  // Refresh stats when screen comes into focus (e.g., after marking shlokas as read)
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) {
+        // Small delay to ensure backend has processed the mark-as-read request
+        const timer = setTimeout(() => {
+          loadData();
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+      // Always return a cleanup function (no-op if not authenticated)
+      return () => {};
+    }, [isAuthenticated])
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+  };
+
+  const handleUseFreeze = async () => {
+    if (!stats.streakFreezeAvailable) {
+      Alert.alert(
+        'Freeze Not Available',
+        'You have already used your streak freeze this month. It will reset at the beginning of next month.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Use Streak Freeze?',
+      'This will protect your current streak from breaking if you miss a day. You can use this once per month.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Use Freeze',
+          onPress: async () => {
+            try {
+              setFreezeLoading(true);
+              const result = await apiService.useStreakFreeze();
+              Alert.alert('Success', result.message || 'Your streak is now protected!', [
+                { text: 'OK' },
+              ]);
+              // Reload stats to reflect the change
+              await loadData();
+            } catch (err) {
+              Alert.alert(
+                'Error',
+                err instanceof Error ? err.message : 'Failed to use streak freeze',
+                [{ text: 'OK' }]
+              );
+            } finally {
+              setFreezeLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={dynamicStyles.container} edges={['top']}>
+        <View style={dynamicStyles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={dynamicStyles.loadingText}>Loading your progress...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={dynamicStyles.container} edges={['top']}>
@@ -87,6 +201,14 @@ export const HomeScreen: React.FC = () => {
         style={dynamicStyles.scrollView}
         contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
+          />
+        }
       >
         {/* Header */}
         <View style={dynamicStyles.header}>
@@ -102,11 +224,11 @@ export const HomeScreen: React.FC = () => {
           </View>
           <ProgressBar
             label="Experience"
-            current={stats.experience}
+            current={stats.experience % stats.experienceToNextLevel}
             max={stats.experienceToNextLevel}
           />
           <Text style={dynamicStyles.levelSubtext}>
-            {stats.experienceToNextLevel - stats.experience} XP to next level
+            {Math.max(0, stats.experienceToNextLevel - (stats.experience % stats.experienceToNextLevel))} XP to next level
           </Text>
         </View>
 
@@ -119,32 +241,64 @@ export const HomeScreen: React.FC = () => {
             icon="📜"
           />
           <StatCard
+            title="Books Read"
+            value={stats.totalBooksRead}
+            subtitle="Total"
+            icon="📚"
+          />
+          <StatCard
             title="Day Streak"
             value={stats.currentStreak}
             subtitle="days"
             icon="🔥"
           />
-          <StatCard
-            title="Achievements"
-            value={stats.achievements}
-            subtitle="unlocked"
-            icon="🏆"
-          />
         </View>
 
-        {/* Recent Achievements */}
-        <View style={dynamicStyles.section}>
-          <Text style={dynamicStyles.sectionTitle}>Recent Achievements</Text>
-          {recentAchievements.map((achievement) => (
-            <View key={achievement.id} style={dynamicStyles.achievementCard}>
-              <Text style={dynamicStyles.achievementIcon}>{achievement.icon}</Text>
-              <View style={dynamicStyles.achievementContent}>
-                <Text style={dynamicStyles.achievementTitle}>{achievement.title}</Text>
-                <Text style={dynamicStyles.achievementDescription}>{achievement.description}</Text>
+        {/* Streak Details Card */}
+        {stats.currentStreak > 0 && (
+          <View style={dynamicStyles.streakCard}>
+            <View style={dynamicStyles.streakHeader}>
+              <Text style={dynamicStyles.streakTitle}>🔥 Streak Details</Text>
+              {stats.streakFreezeAvailable && (
+                <TouchableOpacity
+                  style={dynamicStyles.freezeButton}
+                  onPress={handleUseFreeze}
+                  disabled={freezeLoading}
+                >
+                  {freezeLoading ? (
+                    <ActivityIndicator size="small" color={theme.primary} />
+                  ) : (
+                    <Text style={dynamicStyles.freezeButtonText}>❄️ Freeze</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={dynamicStyles.streakDetails}>
+              <View style={dynamicStyles.streakDetailItem}>
+                <Text style={dynamicStyles.streakDetailLabel}>Current Streak</Text>
+                <Text style={dynamicStyles.streakDetailValue}>{stats.currentStreak} days</Text>
+              </View>
+              <View style={dynamicStyles.streakDetailItem}>
+                <Text style={dynamicStyles.streakDetailLabel}>Longest Streak</Text>
+                <Text style={dynamicStyles.streakDetailValue}>{stats.longestStreak} days</Text>
+              </View>
+              <View style={dynamicStyles.streakDetailItem}>
+                <Text style={dynamicStyles.streakDetailLabel}>Total Streak Days</Text>
+                <Text style={dynamicStyles.streakDetailValue}>{stats.totalStreakDays} days</Text>
               </View>
             </View>
-          ))}
-        </View>
+            {stats.streakFreezeAvailable && (
+              <Text style={dynamicStyles.freezeHint}>
+                💡 You have a streak freeze available! Use it to protect your streak if you miss a day.
+              </Text>
+            )}
+            {!stats.streakFreezeAvailable && stats.currentStreak > 0 && (
+              <Text style={dynamicStyles.freezeHint}>
+                ❄️ Streak freeze used this month. It will reset next month.
+              </Text>
+            )}
+          </View>
+        )}
 
         {/* Growth Chart Placeholder */}
         <View style={dynamicStyles.section}>
@@ -348,6 +502,90 @@ const createStyles = (theme: any) => StyleSheet.create({
   progressBarFill: {
     height: '100%',
     borderRadius: 4,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    color: theme.textSecondary,
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 16,
+  },
+  emptyAchievements: {
+    backgroundColor: theme.cardBackground,
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+  },
+  emptyAchievementsText: {
+    color: theme.textSecondary,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  streakCard: {
+    backgroundColor: theme.cardBackground,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: theme.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  streakHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  streakTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: theme.text,
+  },
+  freezeButton: {
+    backgroundColor: theme.primary + '20',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.primary,
+  },
+  freezeButtonText: {
+    color: theme.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  streakDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 12,
+  },
+  streakDetailItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  streakDetailLabel: {
+    fontSize: 12,
+    color: theme.textSecondary,
+    marginBottom: 4,
+  },
+  streakDetailValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.primary,
+  },
+  freezeHint: {
+    fontSize: 12,
+    color: theme.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });
 

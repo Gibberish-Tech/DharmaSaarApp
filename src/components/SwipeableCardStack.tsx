@@ -15,6 +15,8 @@ import {
 import { KnowledgeCard } from './KnowledgeCard';
 import { KnowledgeItem } from '../data/mockKnowledge';
 import { useTheme } from '../context/ThemeContext';
+import { apiService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 interface SwipeableCardStackProps {
   data: KnowledgeItem[];
@@ -37,6 +39,7 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
   onRefresh,
 }) => {
   const { theme } = useTheme();
+  const { isAuthenticated } = useAuth();
   const dynamicStyles = createStyles(theme);
   
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -60,7 +63,45 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
     extrapolate: 'clamp',
   });
 
+  // Animation for "Read" text (swipe right)
+  const readTextOpacity = position.x.interpolate({
+    inputRange: [0, SWIPE_THRESHOLD, SCREEN_WIDTH * 0.5],
+    outputRange: [0, 0.5, 1],
+    extrapolate: 'clamp',
+  });
+  
+  const readTextScale = position.x.interpolate({
+    inputRange: [0, SWIPE_THRESHOLD, SCREEN_WIDTH * 0.5],
+    outputRange: [0.8, 0.9, 1],
+    extrapolate: 'clamp',
+  });
+
+  // Animation for "Still Reading" text (swipe left)
+  const stillReadingTextOpacity = position.x.interpolate({
+    inputRange: [-SCREEN_WIDTH * 0.5, -SWIPE_THRESHOLD, 0],
+    outputRange: [1, 0.5, 0],
+    extrapolate: 'clamp',
+  });
+  
+  const stillReadingTextScale = position.x.interpolate({
+    inputRange: [-SCREEN_WIDTH * 0.5, -SWIPE_THRESHOLD, 0],
+    outputRange: [1, 0.9, 0.8],
+    extrapolate: 'clamp',
+  });
+
   const nextCard = async () => {
+    // Log the reading of the current card before moving to next
+    if (isAuthenticated && data[currentIndex]) {
+      const currentShloka = data[currentIndex];
+      // Log as 'summary' by default (we can enhance this later to detect if user viewed detailed)
+      if (currentShloka.id) {
+        apiService.logReading(currentShloka.id, 'summary').catch((err) => {
+          // Silently fail - don't interrupt user experience
+          console.warn('Failed to log reading:', err);
+        });
+      }
+    }
+    
     // Mark that we're transitioning to prevent glitches
     isTransitioning.current = true;
     
@@ -98,7 +139,34 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
   };
 
   const swipeCard = (direction: 'left' | 'right', velocity?: number) => {
+    // Early return if no data or invalid index
+    if (!data || data.length === 0 || currentIndex < 0 || currentIndex >= data.length) {
+      console.warn('[SwipeableCardStack] ⚠️ Cannot swipe - no valid data:', {
+        dataLength: data?.length || 0,
+        currentIndex,
+      });
+      resetPosition();
+      return;
+    }
+    
     const x = direction === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
+    
+    // Get current shloka - we know it exists because of the check above
+    const currentShloka = data[currentIndex];
+    const shlokaId = currentShloka?.id;
+    const marked = direction === 'right'; // Swipe right = mark as read, Swipe left = mark as unread
+    
+    // Mark shloka as read/unread based on swipe direction
+    if (isAuthenticated && shlokaId) {
+      apiService.markShlokaAsRead(shlokaId, marked)
+        .then((result) => {
+          console.log(`[SwipeableCardStack] ✅ Successfully marked shloka as ${marked ? 'read' : 'unread'}:`, result);
+        })
+        .catch((err) => {
+          // Log error but don't interrupt user experience
+          console.error('[SwipeableCardStack] ❌ Failed to mark shloka as read:', err);
+        });
+    }
     
     // Calculate duration based on velocity for smoother feel
     const baseDuration = SWIPE_OUT_DURATION;
@@ -172,10 +240,14 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
   // Reverse the array so top card renders last (appears on top)
   const reversedCards = useMemo(() => [...visibleCards].reverse(), [visibleCards]);
 
-  const panResponder = useRef(
-    PanResponder.create({
+  const panResponder = useMemo(
+    () => PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Don't respond if no data
+        if (!data || data.length === 0 || currentIndex < 0 || currentIndex >= data.length) {
+          return false;
+        }
         // Only respond to clearly horizontal gestures
         const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2;
         const hasHorizontalMovement = Math.abs(gestureState.dx) > 8;
@@ -183,6 +255,10 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
       },
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+        // Don't respond if no data
+        if (!data || data.length === 0 || currentIndex < 0 || currentIndex >= data.length) {
+          return false;
+        }
         // Aggressively capture horizontal gestures early to prevent child from interfering
         // Use lower threshold to catch horizontal gestures sooner
         const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2;
@@ -204,6 +280,12 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
         _event: GestureResponderEvent,
         gestureState: PanResponderGestureState,
       ) => {
+        // Don't process swipe if no valid data
+        if (!data || data.length === 0 || currentIndex < 0 || currentIndex >= data.length) {
+          resetPosition();
+          return;
+        }
+        
         const { dx, dy, vx } = gestureState;
         
         // Only process if gesture was clearly horizontal (matching capture threshold)
@@ -223,10 +305,10 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
             swipeCard('left', Math.abs(velocity));
           }
         } else if (dx > SWIPE_THRESHOLD) {
-          // Swipe right - next card
+          // Swipe right - mark as read and go to next card
           swipeCard('right', velocity);
         } else if (dx < -SWIPE_THRESHOLD) {
-          // Swipe left - next card
+          // Swipe left - mark as unread and go to next card
           swipeCard('left', Math.abs(velocity));
         } else {
           // Return to center
@@ -234,7 +316,8 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
         }
       },
     }),
-  ).current;
+    [data, currentIndex]
+  );
 
   const getCardStyle = (index: number) => {
     const isTopCard = index === currentIndex;
@@ -336,6 +419,48 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
           </Animated.View>
         );
       })}
+      
+      {/* Swipe indicators - centered on screen, only show when top card exists */}
+      {data.length > 0 && (
+        <>
+          {/* "Read" indicator - appears when swiping right */}
+          <Animated.View
+            style={[
+              dynamicStyles.swipeIndicator,
+              dynamicStyles.readIndicator,
+              {
+                opacity: readTextOpacity,
+                transform: [
+                  { translateX: -80 }, // Center horizontally (half of minWidth)
+                  { scale: readTextScale },
+                ],
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <Text style={dynamicStyles.swipeIndicatorText}>Read</Text>
+          </Animated.View>
+          
+          {/* "Still Reading" indicator - appears when swiping left */}
+          <Animated.View
+            style={[
+              dynamicStyles.swipeIndicator,
+              dynamicStyles.stillReadingIndicator,
+              {
+                opacity: stillReadingTextOpacity,
+                transform: [
+                  { translateX: -100 }, // Center horizontally (accounting for longer text)
+                  { scale: stillReadingTextScale },
+                ],
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <Text style={dynamicStyles.swipeIndicatorText}>Still Reading</Text>
+          </Animated.View>
+        </>
+      )}
+      
       {/* Progress indicator */}
       {data.length > 0 && (
         <View style={dynamicStyles.progressContainer}>
@@ -489,6 +614,43 @@ const createStyles = (theme: any) => StyleSheet.create({
     top: 100,
     right: 20,
     zIndex: 1001,
+  },
+  swipeIndicator: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -30,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 20,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    minWidth: 160,
+    maxWidth: 200,
+  },
+  readIndicator: {
+    backgroundColor: '#10B981' + 'E6', // Green with opacity
+    borderColor: '#10B981',
+  },
+  stillReadingIndicator: {
+    backgroundColor: '#F59E0B' + 'E6', // Amber/Orange with opacity
+    borderColor: '#F59E0B',
+  },
+  swipeIndicatorText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
 });
 

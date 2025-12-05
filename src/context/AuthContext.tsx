@@ -1,7 +1,7 @@
 /**
  * Auth Context - Manages user authentication state and tokens
  */
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/api';
 
@@ -20,6 +20,7 @@ export interface AuthTokens {
 
 interface AuthContextType {
   user: User | null;
+  tokens: AuthTokens | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -38,7 +39,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [tokens, setTokens] = useState<AuthTokens | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load auth state from storage on mount
+  // Clear auth state function - defined early so it can be used in useEffect
+  const clearAuthState = useCallback(async () => {
+    try {
+      await Promise.all([
+        AsyncStorage.removeItem(TOKEN_STORAGE_KEY),
+        AsyncStorage.removeItem(USER_STORAGE_KEY),
+      ]);
+      setUser(null);
+      setTokens(null);
+      apiService.setAccessToken(null);
+    } catch (error) {
+      console.error('Error clearing auth state:', error);
+    }
+  }, []);
+
+  // Load auth state from storage on mount and validate/refresh tokens
   useEffect(() => {
     const loadAuthState = async () => {
       try {
@@ -50,10 +66,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (storedTokens && storedUser) {
           const parsedTokens = JSON.parse(storedTokens);
           const parsedUser = JSON.parse(storedUser);
+          
+          // Set tokens and user temporarily
           setTokens(parsedTokens);
           setUser(parsedUser);
-          // Update API service with access token
           apiService.setAccessToken(parsedTokens.access);
+          
+          // Validate and refresh token if refresh token exists
+          if (parsedTokens.refresh) {
+            try {
+              // Attempt to refresh the access token to validate it's still valid
+              const tokenResponse = await apiService.refreshToken(parsedTokens.refresh);
+              const updatedTokens: AuthTokens = {
+                access: tokenResponse.access,
+                refresh: tokenResponse.refresh || parsedTokens.refresh,
+              };
+              await AsyncStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(updatedTokens));
+              setTokens(updatedTokens);
+              apiService.setAccessToken(tokenResponse.access);
+            } catch (refreshError) {
+              // If refresh fails, clear auth state (token expired or invalid)
+              console.log('Token refresh failed on app start, clearing auth state');
+              await clearAuthState();
+            }
+          } else {
+            // No refresh token, clear auth state
+            await clearAuthState();
+          }
         }
       } catch (error) {
         console.error('Error loading auth state:', error);
@@ -62,13 +101,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           AsyncStorage.removeItem(TOKEN_STORAGE_KEY),
           AsyncStorage.removeItem(USER_STORAGE_KEY),
         ]);
+        setUser(null);
+        setTokens(null);
+        apiService.setAccessToken(null);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadAuthState();
-  }, []);
+  }, [clearAuthState]);
 
   const saveAuthState = async (userData: User, tokenData: AuthTokens) => {
     try {
@@ -82,20 +124,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error('Error saving auth state:', error);
       throw error;
-    }
-  };
-
-  const clearAuthState = async () => {
-    try {
-      await Promise.all([
-        AsyncStorage.removeItem(TOKEN_STORAGE_KEY),
-        AsyncStorage.removeItem(USER_STORAGE_KEY),
-      ]);
-      setUser(null);
-      setTokens(null);
-      apiService.setAccessToken(null);
-    } catch (error) {
-      console.error('Error clearing auth state:', error);
     }
   };
 
@@ -123,30 +151,50 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await clearAuthState();
   };
 
-  const refreshAccessToken = async () => {
-    if (!tokens?.refresh) {
-      throw new Error('No refresh token available');
-    }
-
+  const refreshAccessToken = useCallback(async () => {
+    // Get the latest tokens from storage to ensure we have the most up-to-date refresh token
     try {
-      const newAccessToken = await apiService.refreshToken(tokens.refresh);
-      const updatedTokens = {
-        ...tokens,
-        access: newAccessToken,
+      const storedTokens = await AsyncStorage.getItem(TOKEN_STORAGE_KEY);
+      if (!storedTokens) {
+        throw new Error('No refresh token available');
+      }
+      
+      const parsedTokens: AuthTokens = JSON.parse(storedTokens);
+      if (!parsedTokens.refresh) {
+        throw new Error('No refresh token available');
+      }
+
+      const tokenResponse = await apiService.refreshToken(parsedTokens.refresh);
+      // Update tokens - use new refresh token if provided (when rotation is enabled), otherwise keep the old one
+      const updatedTokens: AuthTokens = {
+        access: tokenResponse.access,
+        refresh: tokenResponse.refresh || parsedTokens.refresh, // Use new refresh token if provided, otherwise keep existing
       };
       await AsyncStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(updatedTokens));
       setTokens(updatedTokens);
-      apiService.setAccessToken(newAccessToken);
+      apiService.setAccessToken(tokenResponse.access);
     } catch (error) {
       console.error('Token refresh error:', error);
       // If refresh fails, logout user
       await clearAuthState();
       throw error;
     }
-  };
+  }, [clearAuthState]); // Include clearAuthState in deps
+
+  // Set up token refresh callback for automatic token refresh on 401 errors
+  useEffect(() => {
+    // Register the refresh callback with the API service
+    apiService.setRefreshTokenCallback(refreshAccessToken);
+    
+    // Cleanup: remove callback on unmount
+    return () => {
+      apiService.setRefreshTokenCallback(null);
+    };
+  }, [refreshAccessToken]);
 
   const value: AuthContextType = {
     user,
+    tokens,
     isAuthenticated: !!user && !!tokens,
     isLoading,
     login,
