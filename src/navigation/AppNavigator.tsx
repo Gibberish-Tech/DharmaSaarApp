@@ -9,6 +9,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { ShlokasScreen } from '../screens/ShlokasScreen';
 import { ChatbotScreen } from '../screens/ChatbotScreen';
 import { ProfileStack } from './ProfileStack';
+import { ShlokaDetailScreen } from '../screens/ShlokaDetailScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { SignupScreen } from '../screens/SignupScreen';
 import { FloatingTabBar } from '../components/FloatingTabBar';
@@ -24,12 +25,18 @@ export type RootTabParamList = {
   Profile: undefined;
 };
 
+export type RootStackParamList = {
+  MainTabs: undefined;
+  ShlokaDetail: { shlokaId: string };
+};
+
 export type AuthStackParamList = {
   Login: undefined;
   Signup: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
+const RootStack = createStackNavigator<RootStackParamList>();
 const AuthStack = createStackNavigator<AuthStackParamList>();
 
 // Helper component for tab icons (using emoji for now)
@@ -138,6 +145,43 @@ const LoadingScreen: React.FC = () => {
   );
 };
 
+// Root Stack Navigator - wraps tabs and includes ShlokaDetail
+const RootStackNavigator: React.FC = () => {
+  const { theme } = useTheme();
+  
+  return (
+    <RootStack.Navigator
+      screenOptions={{
+        headerShown: false,
+        presentation: 'card',
+      }}
+    >
+      <RootStack.Screen name="MainTabs" component={MainTabs} />
+      <RootStack.Screen
+        name="ShlokaDetail"
+        component={ShlokaDetailScreen}
+        options={{
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.background,
+            elevation: 0,
+            shadowOpacity: 0,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.border,
+          },
+          headerTitleStyle: {
+            fontWeight: '600',
+            color: theme.text,
+            fontSize: 18,
+          },
+          headerTintColor: theme.primary,
+          title: 'Shloka Details',
+        }}
+      />
+    </RootStack.Navigator>
+  );
+};
+
 // Main App Navigator - switches between auth and main app
 export const AppNavigator: React.FC = () => {
   const { isLoading } = useAuth();
@@ -149,9 +193,9 @@ export const AppNavigator: React.FC = () => {
 
   return (
     <>
-      {/* Main app tabs - only shown when authenticated */}
+      {/* Main app with root stack - only shown when authenticated */}
       <AuthWrapper requireAuth={true}>
-        <MainTabs />
+        <RootStackNavigator />
       </AuthWrapper>
 
       {/* Auth screens - only shown when NOT authenticated */}

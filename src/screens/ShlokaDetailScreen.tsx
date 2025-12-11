@@ -16,10 +16,12 @@ import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/api';
 import { KnowledgeCard } from '../components/KnowledgeCard';
 import { convertShlokaToKnowledgeItem } from '../utils/shlokaConverter';
+import { RootStackParamList } from '../navigation/AppNavigator';
 import { ProfileStackParamList } from '../navigation/ProfileStack';
 
-type ShlokaDetailScreenRouteProp = RouteProp<ProfileStackParamList, 'ShlokaDetail'>;
-type ShlokaDetailScreenNavigationProp = StackNavigationProp<ProfileStackParamList, 'ShlokaDetail'>;
+// Support both root stack and profile stack navigation
+type ShlokaDetailScreenRouteProp = RouteProp<RootStackParamList, 'ShlokaDetail'> | RouteProp<ProfileStackParamList, 'ShlokaDetail'>;
+type ShlokaDetailScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ShlokaDetail'> | StackNavigationProp<ProfileStackParamList, 'ShlokaDetail'>;
 
 export const ShlokaDetailScreen: React.FC = () => {
   const { theme } = useTheme();

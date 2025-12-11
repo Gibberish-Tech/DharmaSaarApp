@@ -12,18 +12,29 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/api';
 import { TAB_BAR_TOTAL_HEIGHT } from '../constants/layout';
+import { ShlokaLinkedText } from '../components/ShlokaLinkedText';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   created_at: string;
+}
+
+interface Conversation {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+  messages: Message[];
 }
 
 export const ChatbotScreen: React.FC = () => {
@@ -37,6 +48,9 @@ export const ChatbotScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loadingConversations, setLoadingConversations] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -44,6 +58,65 @@ export const ChatbotScreen: React.FC = () => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }
   }, [messages]);
+
+  const loadConversations = async () => {
+    if (!isAuthenticated) return;
+    
+    setLoadingConversations(true);
+    try {
+      const convos = await apiService.getConversations();
+      setConversations(convos);
+    } catch (err) {
+      console.error('Error loading conversations:', err);
+    } finally {
+      setLoadingConversations(false);
+    }
+  };
+
+  const openHistory = () => {
+    setShowHistory(true);
+    loadConversations();
+  };
+
+  const loadConversation = (conversation: Conversation) => {
+    setConversationId(conversation.id);
+    setMessages(conversation.messages);
+    setShowHistory(false);
+  };
+
+  const startNewConversation = () => {
+    setConversationId(undefined);
+    setMessages([]);
+    setShowHistory(false);
+  };
+
+  const getConversationPreview = (conversation: Conversation): string => {
+    if (conversation.title) {
+      return conversation.title;
+    }
+    const firstUserMessage = conversation.messages.find(m => m.role === 'user');
+    if (firstUserMessage) {
+      return firstUserMessage.content.length > 50 
+        ? firstUserMessage.content.substring(0, 50) + '...'
+        : firstUserMessage.content;
+    }
+    return 'New conversation';
+  };
+
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   const sendMessage = async () => {
     if (!inputText.trim() || isLoading || !isAuthenticated) return;
@@ -106,8 +179,19 @@ export const ChatbotScreen: React.FC = () => {
       >
         {/* Header */}
         <View style={dynamicStyles.header}>
-          <Text style={dynamicStyles.headerTitle}>💬 AI Assistant</Text>
-          <Text style={dynamicStyles.headerSubtitle}>Ask questions about Sanatan Dharma</Text>
+          <View style={dynamicStyles.headerContent}>
+            <View style={dynamicStyles.headerTextContainer}>
+              <Text style={dynamicStyles.headerTitle}>🕉️ Lord Krishna</Text>
+              <Text style={dynamicStyles.headerSubtitle}>Your friend, guide, and mentor</Text>
+            </View>
+            <TouchableOpacity
+              style={dynamicStyles.menuButton}
+              onPress={openHistory}
+              activeOpacity={0.7}
+            >
+              <Text style={dynamicStyles.menuIcon}>☰</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Messages */}
@@ -120,9 +204,9 @@ export const ChatbotScreen: React.FC = () => {
           {messages.length === 0 ? (
             <View style={dynamicStyles.emptyState}>
               <Text style={dynamicStyles.emptyIcon}>🕉️</Text>
-              <Text style={dynamicStyles.emptyTitle}>Start a conversation</Text>
+              <Text style={dynamicStyles.emptyTitle}>Namaste, dear friend</Text>
               <Text style={dynamicStyles.emptyText}>
-                Ask me anything about Sanatan Dharma, Hindu philosophy, or spiritual wisdom.
+                I am here as your friend, guide, and mentor. Ask me anything about life, dharma, or the wisdom of the Bhagavad Gita. I will help you with the same love and guidance I gave to Arjuna.
               </Text>
             </View>
           ) : (
@@ -134,14 +218,25 @@ export const ChatbotScreen: React.FC = () => {
                   message.role === 'user' ? dynamicStyles.userMessage : dynamicStyles.assistantMessage,
                 ]}
               >
+                {message.role === 'assistant' ? (
+                  <ShlokaLinkedText
+                    text={message.content}
+                    textStyle={[
+                      dynamicStyles.messageText,
+                      dynamicStyles.assistantMessageText,
+                    ]}
+                    linkStyle={dynamicStyles.shlokaLink}
+                  />
+                ) : (
                 <Text
                   style={[
                     dynamicStyles.messageText,
-                    message.role === 'user' ? dynamicStyles.userMessageText : dynamicStyles.assistantMessageText,
+                      dynamicStyles.userMessageText,
                   ]}
                 >
                   {message.content}
                 </Text>
+                )}
               </View>
             ))
           )}
@@ -163,7 +258,7 @@ export const ChatbotScreen: React.FC = () => {
         <View style={dynamicStyles.inputContainer}>
           <TextInput
             style={dynamicStyles.input}
-            placeholder="Type your question..."
+            placeholder="Ask Krishna anything..."
             placeholderTextColor={theme.textTertiary}
             value={inputText}
             onChangeText={setInputText}
@@ -186,6 +281,82 @@ export const ChatbotScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Conversation History Drawer - Left Side */}
+      <Modal
+        visible={showHistory}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowHistory(false)}
+      >
+        <View style={dynamicStyles.drawerOverlay}>
+          <TouchableOpacity
+            style={dynamicStyles.drawerOverlayTouchable}
+            activeOpacity={1}
+            onPress={() => setShowHistory(false)}
+          />
+          <View style={dynamicStyles.drawerContent}>
+            <View style={dynamicStyles.drawerHeader}>
+              <Text style={dynamicStyles.drawerTitle}>Conversations</Text>
+              <TouchableOpacity
+                onPress={() => setShowHistory(false)}
+                style={dynamicStyles.closeButton}
+              >
+                <Text style={dynamicStyles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* New Conversation Button - Always Visible */}
+            <TouchableOpacity
+              style={dynamicStyles.newConversationButton}
+              onPress={startNewConversation}
+              activeOpacity={0.7}
+            >
+              <Text style={dynamicStyles.newConversationText}>+ New Conversation</Text>
+            </TouchableOpacity>
+
+            {/* Conversation History List */}
+            {loadingConversations ? (
+              <View style={dynamicStyles.loadingContainer}>
+                <ActivityIndicator size="small" color={theme.primary} />
+              </View>
+            ) : conversations.length === 0 ? (
+              <View style={dynamicStyles.emptyHistoryContainer}>
+                <Text style={dynamicStyles.emptyHistoryText}>No past conversations</Text>
+                <Text style={dynamicStyles.emptyHistorySubtext}>
+                  Your conversation history will appear here
+                </Text>
+              </View>
+            ) : (
+              <View style={dynamicStyles.historySection}>
+                <Text style={dynamicStyles.historySectionTitle}>Past Conversations</Text>
+                <FlatList
+                  data={conversations}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[
+                        dynamicStyles.conversationItem,
+                        conversationId === item.id && dynamicStyles.conversationItemActive
+                      ]}
+                      onPress={() => loadConversation(item)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={dynamicStyles.conversationPreview} numberOfLines={2}>
+                        {getConversationPreview(item)}
+                      </Text>
+                      <Text style={dynamicStyles.conversationDate}>
+                        {formatDate(item.updated_at)}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  style={dynamicStyles.conversationsList}
+                />
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -211,6 +382,14 @@ const createStyles = (theme: any, insets: any) => StyleSheet.create({
     borderBottomColor: theme.border,
     backgroundColor: theme.cardBackground,
   },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
@@ -220,6 +399,15 @@ const createStyles = (theme: any, insets: any) => StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: theme.textSecondary,
+  },
+  menuButton: {
+    padding: 8,
+    marginLeft: 12,
+  },
+  menuIcon: {
+    fontSize: 24,
+    color: theme.text,
+    fontWeight: '600',
   },
   messagesContainer: {
     flex: 1,
@@ -273,6 +461,11 @@ const createStyles = (theme: any, insets: any) => StyleSheet.create({
   },
   assistantMessageText: {
     color: theme.text,
+  },
+  shlokaLink: {
+    color: theme.primary,
+    textDecorationLine: 'underline',
+    fontWeight: '500',
   },
   errorContainer: {
     backgroundColor: theme.error || '#FF6B6B',
@@ -340,5 +533,119 @@ const createStyles = (theme: any, insets: any) => StyleSheet.create({
     marginBottom: 24,
     paddingHorizontal: 32,
     lineHeight: 24,
+  },
+  // Drawer styles - Left Side Navbar
+  drawerOverlay: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  drawerOverlayTouchable: {
+    flex: 0.4, // Takes 40% of the screen (remaining space)
+  },
+  drawerContent: {
+    width: '80%',
+    backgroundColor: theme.cardBackground,
+    flex: 0.8, // Takes 80% of the screen
+    paddingBottom: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    paddingTop: Math.max(insets.top, 16),
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+  },
+  drawerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: theme.text,
+  },
+  closeButton: {
+    padding: 4,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 18,
+    color: theme.text,
+    fontWeight: '300',
+  },
+  newConversationButton: {
+    margin: 16,
+    marginBottom: 8,
+    padding: 14,
+    backgroundColor: theme.primary,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  newConversationText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  historySection: {
+    flex: 1,
+  },
+  historySectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  loadingContainer: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyHistoryContainer: {
+    flex: 1,
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyHistoryText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.text,
+    marginBottom: 8,
+  },
+  emptyHistorySubtext: {
+    fontSize: 14,
+    color: theme.textSecondary,
+    textAlign: 'center',
+  },
+  conversationsList: {
+    flex: 1,
+  },
+  conversationItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+  },
+  conversationItemActive: {
+    backgroundColor: theme.primary + '15',
+  },
+  conversationPreview: {
+    fontSize: 16,
+    color: theme.text,
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  conversationDate: {
+    fontSize: 12,
+    color: theme.textSecondary,
   },
 });

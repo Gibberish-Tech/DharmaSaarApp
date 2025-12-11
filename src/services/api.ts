@@ -288,6 +288,29 @@ class ApiService {
   }
 
   /**
+   * Get a specific shloka by book name, chapter number, and verse number
+   */
+  async getShlokaByChapterVerse(
+    bookName: string,
+    chapterNumber: number,
+    verseNumber: number
+  ): Promise<ShlokaWithExplanation> {
+    const response = await this.request<{
+      message: string;
+      data: ShlokaWithExplanation;
+      errors: any;
+    }>(`/api/shlokas/by-chapter-verse?book_name=${encodeURIComponent(bookName)}&chapter=${chapterNumber}&verse=${verseNumber}`);
+    
+    // Extract the data field from the wrapped response
+    if (response.data) {
+      return response.data;
+    }
+    
+    // Fallback: if response is already in the expected format
+    return response as unknown as ShlokaWithExplanation;
+  }
+
+  /**
    * User signup
    */
   async signup(
