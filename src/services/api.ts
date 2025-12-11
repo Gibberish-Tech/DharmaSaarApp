@@ -145,14 +145,14 @@ class ApiService {
       const timeoutId = setTimeout(() => controller.abort(), apiConfig.timeout);
 
       // Build headers with authentication if token is available
-      const headers: HeadersInit = {
+      const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...(options.headers as Record<string, string>),
       };
 
       // Add authorization header if access token is available
       if (this.accessToken) {
-        headers['Authorization'] = `Bearer ${this.accessToken}`;
+        headers.Authorization = `Bearer ${this.accessToken}`;
       }
 
       const response = await fetch(url, {
@@ -186,7 +186,7 @@ class ApiService {
               this.isRefreshing = false;
               this.refreshPromise = null;
               return this.request<T>(endpoint, options, retryCount + 1);
-            } catch (refreshError) {
+            } catch {
               // Refresh failed, throw the original 401 error
               this.isRefreshing = false;
               this.refreshPromise = null;
@@ -813,6 +813,81 @@ class ApiService {
     }
 
     throw new Error(response.errors?.detail || 'Failed to send message');
+  }
+
+  /**
+   * Update user profile
+   */
+  async updateProfile(data: { name?: string; email?: string }): Promise<{
+    id: string;
+    name: string;
+    email: string;
+    created_at?: string;
+    updated_at?: string;
+  }> {
+    const response = await this.request<{
+      message: string;
+      data: {
+        id: string;
+        name: string;
+        email: string;
+        created_at?: string;
+        updated_at?: string;
+      };
+      errors: any;
+    }>('/api/user/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+
+    if (response.data) {
+      return response.data;
+    }
+
+    throw new Error(response.errors?.detail || 'Failed to update profile');
+  }
+
+  /**
+   * Change user password
+   */
+  async changePassword(
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{ message: string }> {
+    const response = await this.request<{
+      message: string;
+      data: any;
+      errors: any;
+    }>('/api/user/change-password', {
+      method: 'POST',
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    });
+
+    if (response.data || response.message) {
+      return { message: response.message || 'Password changed successfully' };
+    }
+
+    throw new Error(response.errors?.detail || 'Failed to change password');
+  }
+
+  /**
+   * Delete user account
+   */
+  async deleteAccount(): Promise<void> {
+    const response = await this.request<{
+      message: string;
+      data: any;
+      errors: any;
+    }>('/api/user/delete-account', {
+      method: 'DELETE',
+    });
+
+    if (response.errors) {
+      throw new Error(response.errors?.detail || 'Failed to delete account');
+    }
   }
 }
 

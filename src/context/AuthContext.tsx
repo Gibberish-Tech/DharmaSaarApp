@@ -27,6 +27,7 @@ interface AuthContextType {
   signup: (name: string, email: string, password: string, passwordConfirm: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,7 +85,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               await AsyncStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(updatedTokens));
               setTokens(updatedTokens);
               apiService.setAccessToken(tokenResponse.access);
-            } catch (refreshError) {
+            } catch {
               // If refresh fails, clear auth state (token expired or invalid)
               console.log('Token refresh failed on app start, clearing auth state');
               await clearAuthState();
@@ -181,6 +182,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [clearAuthState]); // Include clearAuthState in deps
 
+  const refreshUser = useCallback(async () => {
+    // Refresh user data from storage (after profile update, etc.)
+    try {
+      const storedUser = await AsyncStorage.getItem(USER_STORAGE_KEY);
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+      }
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+    }
+  }, []);
+
   // Set up token refresh callback for automatic token refresh on 401 errors
   useEffect(() => {
     // Register the refresh callback with the API service
@@ -201,6 +215,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     signup,
     logout,
     refreshAccessToken,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

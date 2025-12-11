@@ -1,20 +1,18 @@
 /**
  * Tests for API service
  */
-import ApiService from '../api';
-import { Shloka, ShlokaWithExplanation } from '../api';
+import { apiService, ShlokaWithExplanation, Explanation } from '../api';
 
 // Mock fetch globally
+declare const global: any;
 global.fetch = jest.fn();
 
 describe('ApiService', () => {
-  let apiService: ApiService;
   const mockBaseUrl = 'http://localhost:8000';
 
   beforeEach(() => {
-    apiService = new ApiService();
     apiService.setBaseUrl(mockBaseUrl);
-    (fetch as jest.Mock).mockClear();
+    (global.fetch as jest.Mock).mockClear();
   });
 
   describe('Authentication', () => {
@@ -40,7 +38,7 @@ describe('ApiService', () => {
 
   describe('testConnection', () => {
     it('should return true on successful connection', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => ({ message: 'API is healthy' }),
@@ -48,7 +46,7 @@ describe('ApiService', () => {
 
       const result = await apiService.testConnection();
       expect(result).toBe(true);
-      expect(fetch).toHaveBeenCalledWith(
+      expect(global.fetch).toHaveBeenCalledWith(
         `${mockBaseUrl}/health`,
         expect.objectContaining({
           method: 'GET',
@@ -82,7 +80,7 @@ describe('ApiService', () => {
         errors: null,
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 201,
         json: async () => mockResponse,
@@ -97,7 +95,7 @@ describe('ApiService', () => {
 
       expect(result.user.email).toBe('test@example.com');
       expect(result.tokens.access).toBe('access-token');
-      expect(fetch).toHaveBeenCalledWith(
+      expect(global.fetch).toHaveBeenCalledWith(
         `${mockBaseUrl}/api/auth/signup`,
         expect.objectContaining({
           method: 'POST',
@@ -118,7 +116,7 @@ describe('ApiService', () => {
         errors: { email: ['Email already exists'] },
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         status: 400,
         json: async () => mockResponse,
@@ -148,7 +146,7 @@ describe('ApiService', () => {
         errors: null,
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => mockResponse,
@@ -167,7 +165,7 @@ describe('ApiService', () => {
         errors: { detail: 'Invalid email or password' },
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         status: 401,
         json: async () => mockResponse,
@@ -190,12 +188,12 @@ describe('ApiService', () => {
           sanskrit_text: 'Test text',
           transliteration: 'test',
         },
-        summary: {
+        explanation: {
           id: 'explanation-id',
           shloka_id: 'shloka-id',
           explanation_type: 'summary',
           explanation_text: 'Summary explanation',
-        },
+        } as Explanation,
       };
 
       const mockResponse = {
@@ -204,7 +202,7 @@ describe('ApiService', () => {
         errors: null,
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => mockResponse,
@@ -216,8 +214,8 @@ describe('ApiService', () => {
 
       expect(result.shloka.id).toBe('shloka-id');
       expect(result.shloka.book_name).toBe('Bhagavad Gita');
-      expect(result.summary?.explanation_text).toBe('Summary explanation');
-      expect(fetch).toHaveBeenCalledWith(
+      expect(result.explanation?.explanation_text).toBe('Summary explanation');
+      expect(global.fetch).toHaveBeenCalledWith(
         `${mockBaseUrl}/api/shlokas/random`,
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -247,7 +245,7 @@ describe('ApiService', () => {
         errors: null,
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => mockResponse,
@@ -258,7 +256,7 @@ describe('ApiService', () => {
       const result = await apiService.getShlokaById(shlokaId);
 
       expect(result.shloka.id).toBe(shlokaId);
-      expect(fetch).toHaveBeenCalledWith(
+      expect(global.fetch).toHaveBeenCalledWith(
         `${mockBaseUrl}/api/shlokas/${shlokaId}`,
         expect.any(Object)
       );
@@ -281,7 +279,7 @@ describe('ApiService', () => {
         errors: null,
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => mockResponse,
@@ -319,7 +317,7 @@ describe('ApiService', () => {
         errors: null,
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => mockResponse,
@@ -353,7 +351,7 @@ describe('ApiService', () => {
         errors: null,
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 201,
         json: async () => mockResponse,
@@ -364,7 +362,7 @@ describe('ApiService', () => {
       const result = await apiService.addFavorite(shlokaId);
 
       expect(result.shloka.id).toBe(shlokaId);
-      expect(fetch).toHaveBeenCalledWith(
+      expect(global.fetch).toHaveBeenCalledWith(
         `${mockBaseUrl}/api/favorites`,
         expect.objectContaining({
           method: 'POST',
@@ -382,7 +380,7 @@ describe('ApiService', () => {
         errors: null,
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => mockResponse,
@@ -392,7 +390,7 @@ describe('ApiService', () => {
       apiService.setAccessToken('test-token');
       await apiService.removeFavorite(shlokaId);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(global.fetch).toHaveBeenCalledWith(
         `${mockBaseUrl}/api/favorites?shloka_id=${shlokaId}`,
         expect.objectContaining({
           method: 'DELETE',
@@ -422,7 +420,7 @@ describe('ApiService', () => {
         errors: null,
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => mockResponse,
@@ -454,7 +452,7 @@ describe('ApiService', () => {
         errors: null,
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => mockResponse,
@@ -485,7 +483,7 @@ describe('ApiService', () => {
         errors: null,
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => mockResponse,
@@ -516,7 +514,7 @@ describe('ApiService', () => {
         errors: null,
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         status: 201,
         json: async () => mockResponse,
@@ -524,10 +522,9 @@ describe('ApiService', () => {
       });
 
       apiService.setAccessToken('test-token');
-      const result = await apiService.createReadingLog(shlokaId, 'summary');
+      await apiService.logReading(shlokaId, 'summary');
 
-      expect(result.reading_type).toBe('summary');
-      expect(fetch).toHaveBeenCalledWith(
+      expect(global.fetch).toHaveBeenCalledWith(
         `${mockBaseUrl}/api/reading-logs`,
         expect.objectContaining({
           method: 'POST',

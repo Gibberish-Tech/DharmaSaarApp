@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  Dimensions,
   TouchableOpacity,
   Share,
   Platform,
@@ -16,7 +15,6 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/api';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FLOATING_TAB_BAR_HEIGHT = 20; // Height of the floating tab bar
 const FLOATING_TAB_BAR_MARGIN = 16; // Bottom margin of the floating tab bar
 const FLOATING_TAB_BAR_TOTAL = FLOATING_TAB_BAR_HEIGHT + FLOATING_TAB_BAR_MARGIN;
@@ -33,9 +31,24 @@ const OmSymbol: React.FC<{ size?: number; color?: string }> = ({
   const { theme } = useTheme();
   const omColor = color || theme.primary;
   
+  const omStyles = StyleSheet.create({
+    container: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginHorizontal: 16,
+      width: size,
+      height: size,
+    },
+    text: {
+      fontWeight: '400',
+      fontSize: size,
+      color: omColor,
+    },
+  });
+
   return (
-    <View style={{ justifyContent: 'center', alignItems: 'center', marginHorizontal: 16, width: size, height: size }}>
-      <Text style={{ fontWeight: '400', fontSize: size, color: omColor }}>ॐ</Text>
+    <View style={omStyles.container}>
+      <Text style={omStyles.text}>ॐ</Text>
     </View>
   );
 };
@@ -114,6 +127,17 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
   const themes = item.themes || [];
   const reflectionPrompt = item.reflectionPrompt;
   
+  const checkFavoriteStatus = useCallback(async () => {
+    try {
+      const favorites = await apiService.getFavorites();
+      const isFav = favorites.some(fav => fav.shloka.id === item.id);
+      setIsFavorite(isFav);
+    } catch (err) {
+      console.warn('Failed to check favorite status:', err);
+      setIsFavorite(false);
+    }
+  }, [item.id]);
+  
   // Check if shloka is favorited (only when item.id or auth status changes)
   useEffect(() => {
     if (isAuthenticated && item.id) {
@@ -127,18 +151,7 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
     } else {
       setIsFavorite(false);
     }
-  }, [item.id, isAuthenticated]);
-  
-  const checkFavoriteStatus = async () => {
-    try {
-      const favorites = await apiService.getFavorites();
-      const isFav = favorites.some(fav => fav.shloka.id === item.id);
-      setIsFavorite(isFav);
-    } catch (err) {
-      console.warn('Failed to check favorite status:', err);
-      setIsFavorite(false);
-    }
-  };
+  }, [item.id, isAuthenticated, checkFavoriteStatus]);
   
   const toggleFavorite = async () => {
     if (!isAuthenticated || !item.id || isTogglingFavorite) return;

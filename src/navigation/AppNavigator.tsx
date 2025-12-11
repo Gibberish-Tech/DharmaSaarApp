@@ -8,10 +8,11 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ShlokasScreen } from '../screens/ShlokasScreen';
 import { ChatbotScreen } from '../screens/ChatbotScreen';
-import { ProfileScreen } from '../screens/ProfileScreen';
+import { ProfileStack } from './ProfileStack';
 import { LoginScreen } from '../screens/LoginScreen';
 import { SignupScreen } from '../screens/SignupScreen';
 import { FloatingTabBar } from '../components/FloatingTabBar';
+import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { AuthWrapper } from '../components/AuthWrapper';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -31,6 +32,39 @@ export type AuthStackParamList = {
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const AuthStack = createStackNavigator<AuthStackParamList>();
 
+// Helper component for tab icons (using emoji for now)
+interface TabIconProps {
+  icon: string;
+  color: string;
+  size: number;
+}
+
+const TabIcon: React.FC<TabIconProps> = ({ icon, size }) => {
+  return <Text style={{ fontSize: size || 24 }}>{icon}</Text>;
+};
+
+// Individual tab icon components to avoid nested component warnings
+const HomeIcon = ({ color, size }: { focused: boolean; color: string; size: number }) => (
+  <TabIcon icon="🏠" color={color} size={size} />
+);
+
+const ShlokasIcon = ({ color, size }: { focused: boolean; color: string; size: number }) => (
+  <TabIcon icon="📜" color={color} size={size} />
+);
+
+const ChatbotIcon = ({ color, size }: { focused: boolean; color: string; size: number }) => (
+  <TabIcon icon="💬" color={color} size={size} />
+);
+
+const ProfileIcon = ({ color, size }: { focused: boolean; color: string; size: number }) => (
+  <TabIcon icon="👤" color={color} size={size} />
+);
+
+// Wrapper component for FloatingTabBar to avoid nested component warning
+const FloatingTabBarWrapper = (props: BottomTabBarProps) => (
+  <FloatingTabBar {...props} />
+);
+
 // Main Tab Navigator (shown when authenticated)
 const MainTabs: React.FC = () => {
   return (
@@ -43,42 +77,34 @@ const MainTabs: React.FC = () => {
           display: 'none', // Hide default tab bar, we'll use custom floating one
         },
       }}
-      tabBar={(props) => <FloatingTabBar {...props} />}
+      tabBar={FloatingTabBarWrapper}
     >
       <Tab.Screen
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon icon="🏠" color={color} size={size} />
-          ),
+          tabBarIcon: HomeIcon,
         }}
       />
       <Tab.Screen
         name="Shlokas"
         component={ShlokasScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon icon="📜" color={color} size={size} />
-          ),
+          tabBarIcon: ShlokasIcon,
         }}
       />
       <Tab.Screen
         name="Chatbot"
         component={ChatbotScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon icon="💬" color={color} size={size} />
-          ),
+          tabBarIcon: ChatbotIcon,
         }}
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={ProfileStack}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon icon="👤" color={color} size={size} />
-          ),
+          tabBarIcon: ProfileIcon,
         }}
       />
     </Tab.Navigator>
@@ -114,7 +140,7 @@ const LoadingScreen: React.FC = () => {
 
 // Main App Navigator - switches between auth and main app
 export const AppNavigator: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading } = useAuth();
 
   // Show loading screen while initial auth state is being loaded
   if (isLoading) {
@@ -134,17 +160,6 @@ export const AppNavigator: React.FC = () => {
       </AuthWrapper>
     </>
   );
-};
-
-// Helper component for tab icons (using emoji for now)
-interface TabIconProps {
-  icon: string;
-  color: string;
-  size: number;
-}
-
-const TabIcon: React.FC<TabIconProps> = ({ icon, size }) => {
-  return <Text style={{ fontSize: size || 24 }}>{icon}</Text>;
 };
 
 // Loading screen styles

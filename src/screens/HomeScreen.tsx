@@ -7,7 +7,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Dimensions,
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
@@ -18,8 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/api';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { Journey } from '../components/Journey';
 
 interface StatCardProps {
   title: string;
@@ -83,13 +81,15 @@ export const HomeScreen: React.FC = () => {
     level: 1,
     experience: 0,
     experienceToNextLevel: 100,
+    readingsThisWeek: 0,
+    readingsThisMonth: 0,
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [freezeLoading, setFreezeLoading] = useState(false);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!isAuthenticated) {
       setLoading(false);
       return;
@@ -109,19 +109,26 @@ export const HomeScreen: React.FC = () => {
         level: statsData.level,
         experience: statsData.experience,
         experienceToNextLevel: statsData.xp_for_next_level,
+        readingsThisWeek: statsData.readings_this_week || 0,
+        readingsThisMonth: statsData.readings_this_month || 0,
       });
     } catch (err) {
       console.error('Error loading home data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
+      setError(errorMessage);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [isAuthenticated]);
+
+  const loadDataCallback = useCallback(() => {
+    loadData();
+  }, [loadData]);
 
   useEffect(() => {
-    loadData();
-  }, [isAuthenticated]);
+    loadDataCallback();
+  }, [loadDataCallback]);
 
   // Refresh stats when screen comes into focus (e.g., after marking shlokas as read)
   useFocusEffect(
@@ -135,13 +142,13 @@ export const HomeScreen: React.FC = () => {
       }
       // Always return a cleanup function (no-op if not authenticated)
       return () => {};
-    }, [isAuthenticated])
+    }, [isAuthenticated, loadData])
   );
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadData();
-  };
+  }, [loadData]);
 
   const handleUseFreeze = async () => {
     if (!stats.streakFreezeAvailable) {
@@ -300,15 +307,8 @@ export const HomeScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Growth Chart Placeholder */}
-        <View style={dynamicStyles.section}>
-          <Text style={dynamicStyles.sectionTitle}>Your Journey</Text>
-          <View style={dynamicStyles.chartPlaceholder}>
-            <Text style={dynamicStyles.chartIcon}>📈</Text>
-            <Text style={dynamicStyles.chartText}>Your learning progress over time</Text>
-            <Text style={dynamicStyles.chartSubtext}>Chart coming soon</Text>
-          </View>
-        </View>
+        {/* Journey Component */}
+        <Journey stats={stats} />
       </ScrollView>
     </SafeAreaView>
   );

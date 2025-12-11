@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   PanResponderGestureState,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { KnowledgeCard } from './KnowledgeCard';
 import { KnowledgeItem } from '../data/mockKnowledge';
@@ -76,20 +77,36 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
     extrapolate: 'clamp',
   });
 
-  // Animation for "Still Reading" text (swipe left)
-  const stillReadingTextOpacity = position.x.interpolate({
+  // Animation for "Saving to Favorites" text (swipe left)
+  const savingToFavoritesTextOpacity = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH * 0.5, -SWIPE_THRESHOLD, 0],
     outputRange: [1, 0.5, 0],
     extrapolate: 'clamp',
   });
   
-  const stillReadingTextScale = position.x.interpolate({
+  const savingToFavoritesTextScale = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH * 0.5, -SWIPE_THRESHOLD, 0],
     outputRange: [1, 0.9, 0.8],
     extrapolate: 'clamp',
   });
 
-  const nextCard = async () => {
+  const resetPosition = useCallback(() => {
+    Animated.parallel([
+      Animated.spring(position, {
+        toValue: { x: 0, y: 0 },
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }),
+      Animated.timing(topCardOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [position, topCardOpacity]);
+
+  const nextCard = useCallback(async () => {
     // Log the reading of the current card before moving to next
     if (isAuthenticated && data[currentIndex]) {
       const currentShloka = data[currentIndex];
@@ -136,9 +153,9 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
       
       return newIndex;
     });
-  };
+  }, [data, currentIndex, onFetchNext, isFetchingNext, isAuthenticated, position, nextCardScale, nextCardOpacity, topCardOpacity]);
 
-  const swipeCard = (direction: 'left' | 'right', velocity?: number) => {
+  const swipeCard = useCallback((direction: 'left' | 'right', velocity?: number) => {
     // Early return if no data or invalid index
     if (!data || data.length === 0 || currentIndex < 0 || currentIndex >= data.length) {
       console.warn('[SwipeableCardStack] ⚠️ Cannot swipe - no valid data:', {
@@ -154,18 +171,48 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
     // Get current shloka - we know it exists because of the check above
     const currentShloka = data[currentIndex];
     const shlokaId = currentShloka?.id;
-    const marked = direction === 'right'; // Swipe right = mark as read, Swipe left = mark as unread
     
-    // Mark shloka as read/unread based on swipe direction
-    if (isAuthenticated && shlokaId) {
-      apiService.markShlokaAsRead(shlokaId, marked)
-        .then((result) => {
-          console.log(`[SwipeableCardStack] ✅ Successfully marked shloka as ${marked ? 'read' : 'unread'}:`, result);
-        })
-        .catch((err) => {
-          // Log error but don't interrupt user experience
-          console.error('[SwipeableCardStack] ❌ Failed to mark shloka as read:', err);
-        });
+    // Handle swipe actions based on direction
+    if (shlokaId) {
+      if (direction === 'right') {
+        // Swipe right = mark as read
+        if (isAuthenticated) {
+          apiService.markShlokaAsRead(shlokaId, true)
+            .then((result) => {
+              console.log('[SwipeableCardStack] ✅ Successfully marked shloka as read:', result);
+            })
+            .catch((err) => {
+              // Log error but don't interrupt user experience
+              console.error('[SwipeableCardStack] ❌ Failed to mark shloka as read:', err);
+            });
+        }
+      } else {
+        // Swipe left = add to favorites
+        if (isAuthenticated) {
+          apiService.addFavorite(shlokaId)
+            .then((result) => {
+              console.log('[SwipeableCardStack] ✅ Successfully added shloka to favorites:', result);
+              // Show success feedback (non-intrusive - just log, user can see the "Saving to Favorites" indicator)
+            })
+            .catch((err) => {
+              // Show error alert if favorite addition fails
+              console.error('[SwipeableCardStack] ❌ Failed to add shloka to favorites:', err);
+              const errorMessage = err instanceof Error ? err.message : 'Failed to add to favorites';
+              Alert.alert(
+                'Unable to Save Favorite',
+                errorMessage + '. Please try again later.',
+                [{ text: 'OK' }]
+              );
+            });
+        } else {
+          // User is not authenticated - show message
+          Alert.alert(
+            'Sign In Required',
+            'Please sign in to save shlokas to your favorites.',
+            [{ text: 'OK' }]
+          );
+        }
+      }
     }
     
     // Calculate duration based on velocity for smoother feel
@@ -204,23 +251,7 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
     ]).start(() => {
       nextCard();
     });
-  };
-
-  const resetPosition = () => {
-    Animated.parallel([
-      Animated.spring(position, {
-        toValue: { x: 0, y: 0 },
-        useNativeDriver: true,
-        tension: 50,
-        friction: 7,
-      }),
-      Animated.timing(topCardOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
+  }, [data, currentIndex, resetPosition, position, topCardOpacity, nextCardScale, nextCardOpacity, isAuthenticated, nextCard]);
 
   // Memoize visible cards to prevent unnecessary recalculations
   // MUST be called before any early returns to follow Rules of Hooks
@@ -308,7 +339,7 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
           // Swipe right - mark as read and go to next card
           swipeCard('right', velocity);
         } else if (dx < -SWIPE_THRESHOLD) {
-          // Swipe left - mark as unread and go to next card
+          // Swipe left - add to favorites and go to next card
           swipeCard('left', Math.abs(velocity));
         } else {
           // Return to center
@@ -316,7 +347,7 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
         }
       },
     }),
-    [data, currentIndex]
+    [data, currentIndex, position, resetPosition, swipeCard]
   );
 
   const getCardStyle = (index: number) => {
@@ -401,9 +432,8 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
 
   return (
     <View style={dynamicStyles.container}>
-      {reversedCards.map(({ item, index: actualIndex }, reverseIndex) => {
+      {reversedCards.map(({ item, index: actualIndex }) => {
         const isTopCard = actualIndex === currentIndex;
-        const isNextCard = actualIndex === (currentIndex + 1) % data.length;
         const cardStyle = getCardStyle(actualIndex);
 
         return (
@@ -441,22 +471,22 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
             <Text style={dynamicStyles.swipeIndicatorText}>Read</Text>
           </Animated.View>
           
-          {/* "Still Reading" indicator - appears when swiping left */}
+          {/* "Saving to Favorites" indicator - appears when swiping left */}
           <Animated.View
             style={[
               dynamicStyles.swipeIndicator,
               dynamicStyles.stillReadingIndicator,
               {
-                opacity: stillReadingTextOpacity,
+                opacity: savingToFavoritesTextOpacity,
                 transform: [
                   { translateX: -100 }, // Center horizontally (accounting for longer text)
-                  { scale: stillReadingTextScale },
+                  { scale: savingToFavoritesTextScale },
                 ],
               },
             ]}
             pointerEvents="none"
           >
-            <Text style={dynamicStyles.swipeIndicatorText}>Still Reading</Text>
+            <Text style={dynamicStyles.swipeIndicatorText}>Saving to Favorites</Text>
           </Animated.View>
         </>
       )}

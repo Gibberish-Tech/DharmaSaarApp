@@ -9,11 +9,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { Alert } from 'react-native';
+import { ProfileStackParamList } from '../navigation/ProfileStack';
+import { CONTENT_BOTTOM_PADDING } from '../constants/layout';
 
 interface ProfileItemProps {
   icon: string;
@@ -31,7 +35,7 @@ const ProfileItem: React.FC<ProfileItemProps> = ({
   rightElement 
 }) => {
   const { theme } = useTheme();
-  const dynamicStyles = createStyles(theme);
+  const dynamicStyles = createProfileItemStyles(theme);
 
   return (
     <TouchableOpacity
@@ -50,10 +54,14 @@ const ProfileItem: React.FC<ProfileItemProps> = ({
   );
 };
 
+type ProfileScreenNavigationProp = StackNavigationProp<ProfileStackParamList, 'ProfileMain'>;
+
 export const ProfileScreen: React.FC = () => {
   const { theme, themeMode, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
-  const dynamicStyles = createStyles(theme);
+  const navigation = useNavigation<ProfileScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
+  const dynamicStyles = createStyles(theme, insets);
 
   // Format joined date from user.created_at
   const joinedDate = user?.created_at
@@ -78,7 +86,7 @@ export const ProfileScreen: React.FC = () => {
           onPress: async () => {
             try {
               await logout();
-            } catch (error) {
+            } catch {
               Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
           },
@@ -112,16 +120,21 @@ export const ProfileScreen: React.FC = () => {
               icon="👤"
               title="Edit Profile"
               subtitle="Update your personal information"
+              onPress={() => navigation.navigate('EditProfile')}
             />
+            <View style={dynamicStyles.divider} />
             <ProfileItem
               icon="🔔"
               title="Notifications"
               subtitle="Manage notification preferences"
+              onPress={() => navigation.navigate('Notifications')}
             />
+            <View style={dynamicStyles.divider} />
             <ProfileItem
               icon="🔒"
               title="Privacy & Security"
               subtitle="Manage your privacy settings"
+              onPress={() => navigation.navigate('PrivacySecurity')}
             />
           </View>
         </View>
@@ -133,16 +146,21 @@ export const ProfileScreen: React.FC = () => {
               icon="📊"
               title="Learning Stats"
               subtitle="View detailed statistics"
+              onPress={() => navigation.navigate('LearningStats')}
             />
+            <View style={dynamicStyles.divider} />
             <ProfileItem
               icon="🏆"
               title="Achievements"
               subtitle="View all your achievements"
+              onPress={() => navigation.navigate('Achievements')}
             />
+            <View style={dynamicStyles.divider} />
             <ProfileItem
               icon="⭐"
               title="Favorites"
               subtitle="Your saved shlokas"
+              onPress={() => navigation.navigate('Favorites')}
             />
           </View>
         </View>
@@ -164,15 +182,31 @@ export const ProfileScreen: React.FC = () => {
                 />
               }
             />
+            <View style={dynamicStyles.divider} />
             <ProfileItem
               icon="ℹ️"
               title="About"
               subtitle="App version and information"
+              onPress={() => {
+                Alert.alert(
+                  'About Sanatan App',
+                  'Version 0.0.1\n\nA modern app for learning and understanding Hindu scriptures and shlokas.',
+                  [{ text: 'OK' }]
+                );
+              }}
             />
+            <View style={dynamicStyles.divider} />
             <ProfileItem
               icon="📧"
               title="Support"
               subtitle="Get help and contact us"
+              onPress={() => {
+                Alert.alert(
+                  'Support',
+                  'For support, please contact us at support@sanatanapp.com',
+                  [{ text: 'OK' }]
+                );
+              }}
             />
           </View>
         </View>
@@ -190,7 +224,43 @@ export const ProfileScreen: React.FC = () => {
   );
 };
 
-const createStyles = (theme: any) => StyleSheet.create({
+// Styles for ProfileItem component (doesn't need insets)
+const createProfileItemStyles = (theme: any) => StyleSheet.create({
+  profileItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+  },
+  profileIcon: {
+    fontSize: 24,
+    marginRight: 16,
+    width: 32,
+    textAlign: 'center',
+  },
+  profileItemContent: {
+    flex: 1,
+  },
+  profileItemTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: theme.text,
+    marginBottom: 2,
+  },
+  profileItemSubtitle: {
+    fontSize: 14,
+    color: theme.textTertiary,
+  },
+  profileItemArrow: {
+    fontSize: 24,
+    color: theme.textTertiary,
+    marginLeft: 8,
+  },
+});
+
+// Styles for ProfileScreen component (needs insets for bottom padding)
+const createStyles = (theme: any, insets: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,
@@ -200,7 +270,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 100, // Space for floating tab bar (70px height + 16px margin + 14px extra)
+    paddingBottom: Math.max(insets.bottom, 20) + CONTENT_BOTTOM_PADDING,
   },
   profileHeader: {
     alignItems: 'center',
@@ -260,36 +330,10 @@ const createStyles = (theme: any) => StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  profileItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  profileIcon: {
-    fontSize: 24,
-    marginRight: 16,
-    width: 32,
-    textAlign: 'center',
-  },
-  profileItemContent: {
-    flex: 1,
-  },
-  profileItemTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: theme.text,
-    marginBottom: 2,
-  },
-  profileItemSubtitle: {
-    fontSize: 14,
-    color: theme.textTertiary,
-  },
-  profileItemArrow: {
-    fontSize: 24,
-    color: theme.textTertiary,
-    marginLeft: 8,
+  divider: {
+    height: 1,
+    backgroundColor: theme.border,
+    marginLeft: 48,
   },
   logoutButton: {
     backgroundColor: theme.cardBackground,

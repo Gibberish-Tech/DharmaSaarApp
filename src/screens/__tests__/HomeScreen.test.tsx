@@ -94,7 +94,7 @@ describe('HomeScreen', () => {
       () => new Promise(() => {})
     );
 
-    const { getByTestId } = render(<HomeScreen />);
+    render(<HomeScreen />);
 
     // Check for loading indicator (adjust based on actual implementation)
     // expect(getByTestId('loading-indicator')).toBeTruthy();
@@ -106,7 +106,7 @@ describe('HomeScreen', () => {
     );
     (apiService.getAchievements as jest.Mock).mockResolvedValue([]);
 
-    const { getByText } = render(<HomeScreen />);
+    render(<HomeScreen />);
 
     await waitFor(() => {
       // Check for error message (adjust based on actual implementation)

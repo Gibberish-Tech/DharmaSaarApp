@@ -61,13 +61,15 @@ jest.mock('react-native-safe-area-context', () => ({
 describe('KnowledgeCard', () => {
   const mockItem: KnowledgeItem = {
     id: 'shloka-1',
+    title: 'Test Shloka',
+    content: 'Test content',
     bookName: 'Bhagavad Gita',
     chapterNumber: 1,
     verseNumber: 1,
     sanskritText: 'धृतराष्ट्र उवाच',
     transliteration: 'dhritarashtra uvacha',
     summary: 'This is a summary explanation',
-    detailed: 'This is a detailed explanation',
+    detailedExplanation: 'This is a detailed explanation',
   };
 
   beforeEach(() => {
@@ -126,7 +128,7 @@ describe('KnowledgeCard', () => {
 
   it('should show bookmark button when authenticated', () => {
     mockAuthContext.isAuthenticated = true;
-    const { queryByTestId } = render(
+    render(
       <ThemeProvider>
         <AuthProvider>
           <KnowledgeCard item={mockItem} />
@@ -146,7 +148,7 @@ describe('KnowledgeCard', () => {
       shloka: { id: mockItem.id },
     });
 
-    const { getByTestId } = render(
+    render(
       <ThemeProvider>
         <AuthProvider>
           <KnowledgeCard item={mockItem} />
@@ -171,7 +173,7 @@ describe('KnowledgeCard', () => {
   it('should not show toggle button when detailed explanation is not available', () => {
     const itemWithoutDetailed: KnowledgeItem = {
       ...mockItem,
-      detailed: undefined,
+      detailedExplanation: undefined,
     };
 
     const { queryByText } = render(

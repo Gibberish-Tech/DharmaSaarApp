@@ -17,6 +17,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/api';
+import { TAB_BAR_TOTAL_HEIGHT } from '../constants/layout';
 
 interface Message {
   id: string;
@@ -189,10 +190,6 @@ export const ChatbotScreen: React.FC = () => {
   );
 };
 
-// Floating tab bar constants (matching FloatingTabBar.tsx)
-const TAB_BAR_HEIGHT = 30;
-const FLOATING_MARGIN = 16;
-const TAB_BAR_TOTAL_HEIGHT = TAB_BAR_HEIGHT + FLOATING_MARGIN;
 
 const createStyles = (theme: any, insets: any) => StyleSheet.create({
   container: {
@@ -290,7 +287,7 @@ const createStyles = (theme: any, insets: any) => StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     padding: 16,
-    paddingBottom: Math.max(insets.bottom, 16) + TAB_BAR_TOTAL_HEIGHT,
+    paddingBottom: Math.max(insets.bottom, 16) + TAB_BAR_TOTAL_HEIGHT + 8,
     borderTopWidth: 1,
     borderTopColor: theme.border,
     backgroundColor: theme.cardBackground,

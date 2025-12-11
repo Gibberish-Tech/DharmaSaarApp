@@ -29,7 +29,6 @@ export interface KnowledgeItem {
   verseNumber?: number;
   // Explanation fields for backward compatibility
   summaryExplanation?: string;
-  detailedExplanation?: string;
   // Structured fields from explanation
   summary?: string;
   detailedMeaning?: string;

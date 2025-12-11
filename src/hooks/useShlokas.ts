@@ -1,8 +1,8 @@
 /**
  * Custom hook for fetching and managing shlokas
  */
-import { useState, useEffect, useCallback } from 'react';
-import { apiService, ShlokaWithExplanation } from '../services/api';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { apiService } from '../services/api';
 import { KnowledgeItem } from '../data/mockKnowledge';
 import { convertShlokaToKnowledgeItem } from '../utils/shlokaConverter';
 
@@ -18,7 +18,8 @@ export function useShlokas(initialCount: number = 5): UseShlokasReturn {
   const [shlokas, setShlokas] = useState<KnowledgeItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [loadedIds, setLoadedIds] = useState<Set<string>>(new Set());
+  // Use ref instead of state to avoid circular dependencies in useCallback
+  const loadedIdsRef = useRef<Set<string>>(new Set());
 
   // Test API connection on mount
   useEffect(() => {
@@ -44,13 +45,14 @@ export function useShlokas(initialCount: number = 5): UseShlokasReturn {
       const data = await apiService.getRandomShloka();
       
       // Check if we've already loaded this shloka
-      if (loadedIds.has(data.shloka.id)) {
+      if (loadedIdsRef.current.has(data.shloka.id)) {
         // Try again with a different random shloka
         return null;
       }
 
       const knowledgeItem = convertShlokaToKnowledgeItem(data);
-      setLoadedIds((prev) => new Set(prev).add(data.shloka.id));
+      // Update ref instead of state to avoid triggering re-renders
+      loadedIdsRef.current.add(data.shloka.id);
       return knowledgeItem;
     } catch (err) {
       const errorMessage =
@@ -58,7 +60,7 @@ export function useShlokas(initialCount: number = 5): UseShlokasReturn {
       setError(errorMessage);
       throw err;
     }
-  }, [loadedIds]);
+  }, []);
 
   const fetchNextShloka = useCallback(async () => {
     try {
@@ -92,7 +94,8 @@ export function useShlokas(initialCount: number = 5): UseShlokasReturn {
     try {
       setLoading(true);
       setError(null);
-      setLoadedIds(new Set());
+      // Reset the ref instead of state
+      loadedIdsRef.current = new Set();
       setShlokas([]);
 
       const promises = Array.from({ length: initialCount }, () => fetchShloka());
@@ -125,7 +128,7 @@ export function useShlokas(initialCount: number = 5): UseShlokasReturn {
 
   useEffect(() => {
     loadInitialShlokas();
-  }, []);
+  }, [loadInitialShlokas]);
 
   return {
     shlokas,

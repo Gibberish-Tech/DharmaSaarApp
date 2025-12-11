@@ -9,12 +9,10 @@ import {
   StyleSheet,
   Animated,
   Easing,
-  Dimensions,
 } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../context/ThemeContext';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = 70;
 const FLOATING_MARGIN = 16;
 
@@ -49,7 +47,7 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({
         friction: 7,
       }),
     ]).start();
-  }, []);
+  }, [tabBarOpacity, tabBarScale]);
 
   const handleTabPress = (route: any, index: number) => {
     const event = navigation.emit({
