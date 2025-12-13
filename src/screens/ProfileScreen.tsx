@@ -189,7 +189,7 @@ export const ProfileScreen: React.FC = () => {
               subtitle="App version and information"
               onPress={() => {
                 Alert.alert(
-                  'About Sanatan App',
+                  'About DharmaSaar',
                   'Version 0.0.1\n\nA modern app for learning and understanding Hindu scriptures and shlokas.',
                   [{ text: 'OK' }]
                 );
@@ -203,7 +203,7 @@ export const ProfileScreen: React.FC = () => {
               onPress={() => {
                 Alert.alert(
                   'Support',
-                  'For support, please contact us at support@sanatanapp.com',
+                  'For support, please contact us at support@dharmasaar.com',
                   [{ text: 'OK' }]
                 );
               }}

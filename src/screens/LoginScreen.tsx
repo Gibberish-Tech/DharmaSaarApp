@@ -83,7 +83,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           <View style={dynamicStyles.header}>
             <Text style={dynamicStyles.omSymbol}>🕉️</Text>
             <Text style={dynamicStyles.title}>नमस्ते</Text>
-            <Text style={dynamicStyles.subtitle}>Welcome back to Sanatan</Text>
+            <Text style={dynamicStyles.subtitle}>Welcome back to DharmaSaar</Text>
           </View>
 
           {/* Form */}

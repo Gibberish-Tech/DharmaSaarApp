@@ -32,8 +32,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_STORAGE_KEY = '@sanatan_app_tokens';
-const USER_STORAGE_KEY = '@sanatan_app_user';
+const TOKEN_STORAGE_KEY = '@dharmasaar_tokens';
+const USER_STORAGE_KEY = '@dharmasaar_user';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);

@@ -1,5 +1,5 @@
 /**
- * Sanatan App - Hindu Mythology Knowledge
+ * DharmaSaar - Hindu Mythology Knowledge
  * @format
  */
 

@@ -1,5 +1,5 @@
 /**
- * Chatbot Screen - AI assistant for Sanatan Dharma questions
+ * Chatbot Screen - AI assistant for DharmaSaar questions
  */
 import React, { useState, useEffect, useRef } from 'react';
 import {

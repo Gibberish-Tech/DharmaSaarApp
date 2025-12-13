@@ -115,7 +115,7 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
             {/* Header */}
             <View style={dynamicStyles.header}>
               <Text style={dynamicStyles.omSymbol}>🕉️</Text>
-              <Text style={dynamicStyles.title}>Join Sanatan</Text>
+              <Text style={dynamicStyles.title}>Join DharmaSaar</Text>
               <Text style={dynamicStyles.subtitle}>Start your spiritual journey</Text>
             </View>
 

@@ -52,7 +52,7 @@ export const EditProfileScreen: React.FC = () => {
       
       // Update user in AsyncStorage and context
       try {
-        await AsyncStorage.setItem('@sanatan_app_user', JSON.stringify(updatedUser));
+        await AsyncStorage.setItem('@dharmasaar_user', JSON.stringify(updatedUser));
         await refreshUser();
       } catch (storageError) {
         console.error('Error updating user in storage:', storageError);

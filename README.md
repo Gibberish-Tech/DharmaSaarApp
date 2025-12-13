@@ -1,10 +1,10 @@
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
-# Sanatan App - Hindu Mythology Knowledge
+# DharmaSaar - Hindu Mythology Knowledge
 
-## What is "Sanatan"?
+## What is "DharmaSaar"?
 
-**"Sanatan"** (also "Sanatana") means **eternal, timeless, or everlasting**. **"Sanatan Dharma"** is the original name for what is commonly called "Hinduism" in the West - it translates to **"the eternal way"** or **"the eternal law"** - representing the timeless, universal principles that govern existence.
+**"DharmaSaar"** means **"the essence of Dharma"** (धर्म का सार). **"Dharma"** represents righteousness, duty, and the eternal law, while **"Saar"** means essence or core. Together, DharmaSaar represents the essential wisdom and teachings of Sanatan Dharma - the timeless, universal principles that govern existence.
 
 ## What This App Is For
 

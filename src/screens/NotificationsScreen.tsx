@@ -53,7 +53,7 @@ const NotificationSetting: React.FC<NotificationSettingProps> = ({
   );
 };
 
-const NOTIFICATION_PREFS_KEY = '@sanatan_app_notification_prefs';
+const NOTIFICATION_PREFS_KEY = '@dharmasaar_notification_prefs';
 
 interface NotificationPreferences {
   pushNotifications: boolean;
