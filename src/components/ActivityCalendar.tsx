@@ -18,7 +18,7 @@ interface ActivityCalendarProps {
 
 export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({
   readingsThisWeek,
-  readingsThisMonth,
+  readingsThisMonth: _readingsThisMonth,
   currentStreak,
   recentActivity = [],
 }) => {
@@ -87,13 +87,6 @@ export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({
     return theme.primary; // High (activity === 3)
   };
 
-  const getActivityLabel = (activity: number): string => {
-    if (activity === 0) return 'No activity';
-    if (activity === 1) return 'Light activity';
-    if (activity === 2) return 'Moderate activity';
-    return 'High activity';
-  };
-
   return (
     <View style={dynamicStyles.container}>
       <View style={dynamicStyles.header}>
@@ -126,8 +119,8 @@ export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({
                       : isStreakDay
                       ? theme.primary + '50'
                       : 'transparent',
-                    borderWidth: isToday || isStreakDay ? 2 : 0,
                   },
+                  (isToday || isStreakDay) && dynamicStyles.dayBoxBordered,
                 ]}
               >
                 <Text
@@ -254,6 +247,10 @@ const createStyles = (theme: any) =>
       alignItems: 'center',
       marginBottom: 4,
       position: 'relative',
+      borderWidth: 0,
+    },
+    dayBoxBordered: {
+      borderWidth: 2,
     },
     dayLabel: {
       fontSize: 10,

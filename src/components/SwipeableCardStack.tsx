@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo, useCallback } from 'react';
+import React, { useRef, useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,23 @@ import { KnowledgeItem } from '../data/mockKnowledge';
 import { useTheme } from '../context/ThemeContext';
 import { apiService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { hasSeenSwipeHint, markSwipeHintAsSeen } from '../utils/onboardingStorage';
+import { ErrorDisplay } from './ErrorDisplay';
+import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+
+// Haptic feedback helper
+const triggerHaptic = () => {
+  try {
+    const options = {
+      enableVibrateFallback: true,
+      ignoreAndroidSystemSettings: false,
+    };
+    ReactNativeHapticFeedback.trigger('impactMedium', options);
+  } catch (error) {
+    // Silently fail - haptics are optional
+    console.warn('Haptic feedback not available:', error);
+  }
+};
 
 interface SwipeableCardStackProps {
   data: KnowledgeItem[];
@@ -45,11 +62,14 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFetchingNext, setIsFetchingNext] = useState(false);
+  const [showSwipeHint, setShowSwipeHint] = useState(false);
   const position = useRef(new Animated.ValueXY()).current;
   const nextCardScale = useRef(new Animated.Value(0.95)).current;
   const nextCardOpacity = useRef(new Animated.Value(0.9)).current;
   const topCardOpacity = useRef(new Animated.Value(1)).current;
   const isTransitioning = useRef(false);
+  const swipeHintOpacity = useRef(new Animated.Value(0)).current;
+  const swipeHintScale = useRef(new Animated.Value(0.9)).current;
   
   const rotate = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
@@ -89,6 +109,62 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
     outputRange: [1, 0.9, 0.8],
     extrapolate: 'clamp',
   });
+
+  // Check if user has seen swipe hint on mount
+  useEffect(() => {
+    const checkSwipeHint = async () => {
+      const hasSeen = await hasSeenSwipeHint();
+      if (!hasSeen && data.length > 0 && currentIndex === 0) {
+        // Show hint after a short delay
+        setTimeout(() => {
+          setShowSwipeHint(true);
+          Animated.parallel([
+            Animated.timing(swipeHintOpacity, {
+              toValue: 1,
+              duration: 500,
+              useNativeDriver: true,
+              easing: Easing.out(Easing.ease),
+            }),
+            Animated.spring(swipeHintScale, {
+              toValue: 1,
+              useNativeDriver: true,
+              tension: 50,
+              friction: 7,
+            }),
+          ]).start();
+        }, 1000);
+      }
+    };
+    checkSwipeHint();
+  }, [data.length, currentIndex, swipeHintOpacity, swipeHintScale]);
+
+  // Hide hint when user starts swiping
+  useEffect(() => {
+    const listener = position.x.addListener(({ value }) => {
+      if (showSwipeHint && Math.abs(value) > 10) {
+        // User started swiping, hide hint
+        Animated.parallel([
+          Animated.timing(swipeHintOpacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(swipeHintScale, {
+            toValue: 0.9,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          setShowSwipeHint(false);
+          markSwipeHintAsSeen();
+        });
+      }
+    });
+
+    return () => {
+      position.x.removeListener(listener);
+    };
+  }, [showSwipeHint, position.x, swipeHintOpacity, swipeHintScale]);
 
   const resetPosition = useCallback(() => {
     Animated.parallel([
@@ -165,6 +241,28 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
       resetPosition();
       return;
     }
+
+    // Hide swipe hint if visible
+    if (showSwipeHint) {
+      Animated.parallel([
+        Animated.timing(swipeHintOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(swipeHintScale, {
+          toValue: 0.9,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setShowSwipeHint(false);
+        markSwipeHintAsSeen();
+      });
+    }
+
+    // Haptic feedback (optional enhancement)
+    triggerHaptic();
     
     const x = direction === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
     
@@ -251,7 +349,7 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
     ]).start(() => {
       nextCard();
     });
-  }, [data, currentIndex, resetPosition, position, topCardOpacity, nextCardScale, nextCardOpacity, isAuthenticated, nextCard]);
+  }, [data, currentIndex, resetPosition, position, topCardOpacity, nextCardScale, nextCardOpacity, isAuthenticated, nextCard, showSwipeHint, swipeHintOpacity, swipeHintScale]);
 
   // Memoize visible cards to prevent unnecessary recalculations
   // MUST be called before any early returns to follow Rules of Hooks
@@ -398,13 +496,11 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
       <View style={dynamicStyles.container}>
         <View style={dynamicStyles.errorContainer}>
           <Text style={dynamicStyles.omSymbol}>ॐ</Text>
-          <Text style={dynamicStyles.errorTitle}>Unable to load shlokas</Text>
-          <Text style={dynamicStyles.errorText}>{error}</Text>
-          {onRefresh && (
-            <TouchableOpacity style={dynamicStyles.retryButton} onPress={onRefresh}>
-              <Text style={dynamicStyles.retryButtonText}>Try Again</Text>
-            </TouchableOpacity>
-          )}
+          <ErrorDisplay
+            error={error}
+            onRetry={onRefresh}
+            showRetry={!!onRefresh}
+          />
         </View>
       </View>
     );
@@ -514,6 +610,35 @@ export const SwipeableCardStack: React.FC<SwipeableCardStackProps> = ({
         <View style={dynamicStyles.fetchingIndicator}>
           <ActivityIndicator size="small" color={theme.primary} />
         </View>
+      )}
+
+      {/* Swipe Hint - Shows on first card for first-time users */}
+      {showSwipeHint && currentIndex === 0 && (
+        <Animated.View
+          style={[
+            dynamicStyles.swipeHintContainer,
+            {
+              opacity: swipeHintOpacity,
+              transform: [{ scale: swipeHintScale }],
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <View style={dynamicStyles.swipeHintContent}>
+            <View style={dynamicStyles.swipeHintRow}>
+              <View style={dynamicStyles.swipeHintDirection}>
+                <Text style={dynamicStyles.swipeHintArrow}>←</Text>
+                <Text style={dynamicStyles.swipeHintText}>Favorite</Text>
+              </View>
+              <View style={dynamicStyles.swipeHintDivider} />
+              <View style={dynamicStyles.swipeHintDirection}>
+                <Text style={dynamicStyles.swipeHintText}>Read</Text>
+                <Text style={dynamicStyles.swipeHintArrow}>→</Text>
+              </View>
+            </View>
+            <Text style={dynamicStyles.swipeHintSubtext}>Swipe to interact</Text>
+          </View>
+        </Animated.View>
       )}
     </View>
   );
@@ -681,6 +806,60 @@ const createStyles = (theme: any) => StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+  },
+  swipeHintContainer: {
+    position: 'absolute',
+    bottom: 120,
+    left: 20,
+    right: 20,
+    zIndex: 1002,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swipeHintContent: {
+    backgroundColor: theme.cardBackground,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: theme.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 2,
+    borderColor: theme.primary + '40',
+  },
+  swipeHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  swipeHintDirection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  swipeHintArrow: {
+    fontSize: 24,
+    color: theme.primary,
+    fontWeight: '700',
+  },
+  swipeHintText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.text,
+  },
+  swipeHintDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: theme.border,
+  },
+  swipeHintSubtext: {
+    fontSize: 12,
+    color: theme.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });
 

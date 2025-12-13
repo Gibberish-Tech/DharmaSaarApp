@@ -214,7 +214,7 @@ const createStyles = (theme: any) =>
     title: {
       fontSize: 20,
       fontWeight: '600',
-      color: theme.text,
+      color: theme.heading,
       marginBottom: 8,
     },
     currentPhase: {

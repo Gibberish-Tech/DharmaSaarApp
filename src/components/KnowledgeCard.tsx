@@ -14,6 +14,7 @@ import { FormattedText } from './FormattedText';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/api';
+import { hasSeenCollapsibleHint, markCollapsibleHintAsSeen } from '../utils/onboardingStorage';
 
 const FLOATING_TAB_BAR_HEIGHT = 20; // Height of the floating tab bar
 const FLOATING_TAB_BAR_MARGIN = 16; // Bottom margin of the floating tab bar
@@ -60,6 +61,8 @@ interface CollapsibleSectionProps {
   onToggle: () => void;
   children: React.ReactNode;
   theme: any;
+  showHint?: boolean;
+  onHintDismiss?: () => void;
 }
 
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
@@ -68,17 +71,35 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   onToggle,
   children,
   theme,
+  showHint = false,
+  onHintDismiss,
 }) => {
   const styles = createStyles(theme);
+  
+  const handleToggle = () => {
+    if (showHint && !isExpanded && onHintDismiss) {
+      onHintDismiss();
+    }
+    onToggle();
+  };
   
   return (
     <View style={styles.collapsibleSection}>
       <TouchableOpacity
-        onPress={onToggle}
+        onPress={handleToggle}
         style={styles.collapsibleHeader}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`${title} section, ${isExpanded ? 'expanded' : 'collapsed'}`}
+        accessibilityHint={isExpanded ? 'Double tap to collapse this section' : 'Double tap to expand this section'}
+        accessibilityState={{ expanded: isExpanded }}
       >
-        <Text style={styles.collapsibleTitle}>{title}</Text>
+        <View style={styles.collapsibleTitleContainer}>
+          <Text style={styles.collapsibleTitle}>{title}</Text>
+          {showHint && !isExpanded && (
+            <Text style={styles.collapsibleHint}>Tap to expand</Text>
+          )}
+        </View>
         <Text style={styles.chevronIcon}>{isExpanded ? '▲' : '▼'}</Text>
       </TouchableOpacity>
       {isExpanded && (
@@ -98,6 +119,7 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
   
   const [isFavorite, setIsFavorite] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [showCollapsibleHint, setShowCollapsibleHint] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     summary: false,
     detailedMeaning: false,
@@ -108,6 +130,25 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
     wordByWord: false,
     deeperStudy: false,
   });
+
+  // Check if user has seen collapsible hint
+  useEffect(() => {
+    const checkHint = async () => {
+      const hasSeen = await hasSeenCollapsibleHint();
+      if (!hasSeen) {
+        // Show hint after a short delay
+        setTimeout(() => {
+          setShowCollapsibleHint(true);
+        }, 2000);
+      }
+    };
+    checkHint();
+  }, []);
+
+  const handleCollapsibleHintDismiss = async () => {
+    setShowCollapsibleHint(false);
+    await markCollapsibleHintAsSeen();
+  };
   
   // Extract shloka-specific data
   const sanskritText = item.sanskritText || item.source || '';
@@ -262,6 +303,8 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
               isExpanded={expandedSections.summary}
               onToggle={() => toggleSection('summary')}
               theme={theme}
+              showHint={showCollapsibleHint && !expandedSections.summary}
+              onHintDismiss={handleCollapsibleHintDismiss}
             >
               <FormattedText
                 text={summary}
@@ -447,6 +490,9 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
             style={dynamicStyles.shareButton}
             onPress={handleShare}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Share shloka"
+            accessibilityHint="Double tap to share this shloka"
           >
             <Text style={dynamicStyles.shareIcon}>📤 </Text>
             <Text style={dynamicStyles.shareText}>Share</Text>
@@ -501,6 +547,10 @@ const createStyles = (theme: any) => StyleSheet.create({
   bookmarkButton: {
     padding: 8,
     borderRadius: 20,
+    minHeight: 44, // Minimum touch target size
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   bookmarkIcon: {
     fontSize: 20,
@@ -649,12 +699,21 @@ const createStyles = (theme: any) => StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: 'transparent',
+    minHeight: 44, // Minimum touch target size
+  },
+  collapsibleTitleContainer: {
+    flex: 1,
   },
   collapsibleTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: theme.primary,
-    flex: 1,
+  },
+  collapsibleHint: {
+    fontSize: 11,
+    color: theme.textTertiary,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   chevronIcon: {
     fontSize: 14,
@@ -813,6 +872,9 @@ const createStyles = (theme: any) => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
+    minHeight: 44, // Minimum touch target size
+    minWidth: 44,
+    justifyContent: 'center',
   },
   shareIcon: {
     fontSize: 16,

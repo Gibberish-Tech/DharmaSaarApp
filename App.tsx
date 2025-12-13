@@ -9,6 +9,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { AuthProvider } from './src/context/AuthContext';
+import { OfflineIndicator } from './src/components/OfflineIndicator';
 
 // Suppress InteractionManager deprecation warning from dependencies
 // This warning comes from react-native-reanimated/react-native-worklets
@@ -27,6 +28,7 @@ function AppContent() {
         backgroundColor={theme.background}
         translucent={false}
       />
+      <OfflineIndicator />
       <AppNavigator />
     </>
   );

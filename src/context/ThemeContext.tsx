@@ -17,6 +17,7 @@ export interface ThemeColors {
   textSecondary: string;
   textTertiary: string;
   sanskritText: string;
+  heading: string;
   
   // Accent colors
   primary: string;
@@ -35,21 +36,22 @@ export interface ThemeColors {
 }
 
 const lightTheme: ThemeColors = {
-  background: '#FFF8F0',
+  background: '#F3EFE0', // Parchment Cream
   cardBackground: '#FFFFFF',
   surface: '#FFFFFF',
   text: '#2A1F1A',
   textSecondary: '#6B5B4F',
   textTertiary: '#9B8A7F',
   sanskritText: '#8B2E3D',
-  primary: '#FF8C42',
-  primaryLight: '#FFB366',
+  heading: '#C76C38', // Antique Copper
+  primary: '#D84315', // Vedic Saffron
+  primaryLight: '#FF6F42',
   secondary: '#8B2E3D',
   secondaryLight: '#A64D5C',
   border: '#F5E6D3',
   divider: '#E8E0D6',
   shadow: '#8B2E3D',
-  avatarBackground: '#FF8C42',
+  avatarBackground: '#D84315',
   activeTabBackground: '#FFF5E6',
 };
 
@@ -61,14 +63,15 @@ const darkTheme: ThemeColors = {
   textSecondary: '#D4C4B0',
   textTertiary: '#9B8A7F',
   sanskritText: '#FF8C42',
-  primary: '#FF8C42',
-  primaryLight: '#FFB366',
+  heading: '#E89A6B', // Lighter Antique Copper for dark mode
+  primary: '#FF6F42', // Brighter Vedic Saffron variant for better visibility in dark mode
+  primaryLight: '#FF8A65',
   secondary: '#A64D5C',
   secondaryLight: '#C46B7A',
   border: '#3A2F2A',
   divider: '#3A2F2A',
   shadow: '#000000',
-  avatarBackground: '#FF8C42',
+  avatarBackground: '#FF6F42',
   activeTabBackground: '#3A2F2A',
 };
 

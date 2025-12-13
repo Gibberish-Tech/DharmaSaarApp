@@ -13,6 +13,9 @@
 
 import { Platform } from 'react-native';
 
+// Set to true to force using production API even in development mode (useful for testing)
+const FORCE_PRODUCTION_API = true;
+
 // Get the appropriate development URL based on platform
 const getDevelopmentUrl = (): string => {
   if (Platform.OS === 'android') {
@@ -33,8 +36,10 @@ const API_CONFIG = {
   //                 Windows: `ipconfig` (look for IPv4 Address)
   development: __DEV__ ? getDevelopmentUrl() : 'http://localhost:8000',
   
-  // Production API URL - update this when deploying
-  production: 'https://your-production-api.com',
+  // Production API URL
+  // Note: Currently using HTTP as SSL certificates are not yet configured on the server
+  // TODO: Change to HTTPS once SSL certificates are set up
+  production: 'https://api.dharmasaar.gibberishtech.com',
   
   // Timeout for API requests (in milliseconds)
   timeout: 30000, // 30 seconds
@@ -48,6 +53,11 @@ const API_CONFIG = {
 
 // Get the appropriate API URL based on environment
 export const getApiBaseUrl = (): string => {
+  // Force production API if flag is set (useful for testing production API in dev mode)
+  if (FORCE_PRODUCTION_API) {
+    return API_CONFIG.production;
+  }
+  
   if (__DEV__) {
     return API_CONFIG.development;
   }
@@ -55,8 +65,11 @@ export const getApiBaseUrl = (): string => {
 };
 
 // Export configuration
+const baseUrl = getApiBaseUrl();
+console.log(`[API Config] Using API base URL: ${baseUrl}`);
+
 export const apiConfig = {
-  baseUrl: getApiBaseUrl(),
+  baseUrl: baseUrl,
   timeout: API_CONFIG.timeout,
   retry: API_CONFIG.retry,
 };

@@ -328,7 +328,7 @@ const createStyles = (theme: any, insets: any) => StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: theme.text,
+    color: theme.heading,
     marginBottom: 8,
   },
   headerDescription: {
@@ -342,7 +342,7 @@ const createStyles = (theme: any, insets: any) => StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.text,
+    color: theme.heading,
     marginBottom: 12,
     paddingHorizontal: 4,
   },

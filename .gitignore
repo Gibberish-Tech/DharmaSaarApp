@@ -212,6 +212,7 @@ Thumbs.db
 # Android - Additional keystore formats
 #
 *.jks
+keystore.properties
 
 # iOS - Explicit build directories
 #

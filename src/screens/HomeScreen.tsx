@@ -18,6 +18,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/api';
 import { Journey } from '../components/Journey';
+import { ErrorDisplay } from '../components/ErrorDisplay';
+import { Skeleton, SkeletonStatCard } from '../components/Skeleton';
 
 interface StatCardProps {
   title: string;
@@ -86,7 +88,7 @@ export const HomeScreen: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [freezeLoading, setFreezeLoading] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -194,16 +196,68 @@ export const HomeScreen: React.FC = () => {
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={dynamicStyles.container} edges={['top']}>
-        <View style={dynamicStyles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={dynamicStyles.loadingText}>Loading your progress...</Text>
-        </View>
+        <ScrollView
+          style={dynamicStyles.scrollView}
+          contentContainerStyle={dynamicStyles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header Skeleton */}
+          <View style={dynamicStyles.header}>
+            <Skeleton width={120} height={24} style={dynamicStyles.skeletonMargin} />
+            <Skeleton width={200} height={16} style={dynamicStyles.skeletonMargin} />
+          </View>
+
+          {/* Level Card Skeleton */}
+          <View style={dynamicStyles.levelCard}>
+            <View style={dynamicStyles.levelHeader}>
+              <Skeleton width={100} height={20} />
+              <Skeleton width={32} height={32} borderRadius={16} />
+            </View>
+            <Skeleton width="100%" height={8} borderRadius={4} style={dynamicStyles.skeletonMargin} />
+            <Skeleton width={150} height={12} />
+          </View>
+
+          {/* Stats Grid Skeleton */}
+          <View style={dynamicStyles.statsGrid}>
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+          </View>
+
+          {/* Streak Card Skeleton */}
+          <View style={dynamicStyles.streakCard}>
+            <Skeleton width={150} height={20} style={dynamicStyles.skeletonMargin} />
+            <View style={dynamicStyles.streakDetails}>
+              <View style={dynamicStyles.streakDetailItem}>
+                <Skeleton width={80} height={12} style={dynamicStyles.skeletonMargin} />
+                <Skeleton width={60} height={18} />
+              </View>
+              <View style={dynamicStyles.streakDetailItem}>
+                <Skeleton width={80} height={12} style={dynamicStyles.skeletonMargin} />
+                <Skeleton width={60} height={18} />
+              </View>
+              <View style={dynamicStyles.streakDetailItem}>
+                <Skeleton width={80} height={12} style={dynamicStyles.skeletonMargin} />
+                <Skeleton width={60} height={18} />
+              </View>
+            </View>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={dynamicStyles.container} edges={['top']}>
+      {error && (
+        <View style={dynamicStyles.errorContainer}>
+          <ErrorDisplay
+            error={error}
+            onRetry={loadData}
+            compact={true}
+          />
+        </View>
+      )}
       <ScrollView 
         style={dynamicStyles.scrollView}
         contentContainerStyle={dynamicStyles.scrollContent}
@@ -326,13 +380,17 @@ const createStyles = (theme: any) => StyleSheet.create({
     padding: 20,
     paddingBottom: 100, // Space for floating tab bar (70px height + 16px margin + 14px extra)
   },
+  errorContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
   header: {
     marginBottom: 24,
   },
   greeting: {
     fontSize: 32,
     fontWeight: '600',
-    color: theme.text,
+    color: theme.heading,
     marginBottom: 4,
   },
   subGreeting: {
@@ -359,7 +417,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   levelLabel: {
     fontSize: 20,
     fontWeight: '600',
-    color: theme.text,
+    color: theme.heading,
   },
   levelIcon: {
     fontSize: 32,
@@ -375,9 +433,11 @@ const createStyles = (theme: any) => StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 24,
     gap: 12,
+    flexWrap: 'wrap', // Allow wrapping on very small screens
   },
   statCard: {
     flex: 1,
+    minWidth: 100, // Minimum width to prevent too small cards
     backgroundColor: theme.cardBackground,
     borderRadius: 12,
     padding: 16,
@@ -415,7 +475,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: theme.text,
+    color: theme.heading,
     marginBottom: 16,
   },
   achievementCard: {
@@ -555,6 +615,10 @@ const createStyles = (theme: any) => StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.primary,
+    minHeight: 44, // Minimum touch target size
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   freezeButtonText: {
     color: theme.primary,
@@ -586,6 +650,9 @@ const createStyles = (theme: any) => StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     fontStyle: 'italic',
+  },
+  skeletonMargin: {
+    marginBottom: 8,
   },
 });
 

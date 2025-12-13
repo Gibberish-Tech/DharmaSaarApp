@@ -8,7 +8,6 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  ActivityIndicator,
   TouchableOpacity,
   Alert,
 } from 'react-native';
@@ -18,6 +17,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { apiService, Shloka } from '../services/api';
+import { Skeleton, SkeletonCard } from '../components/Skeleton';
 
 interface Favorite {
   id: string;
@@ -109,12 +109,13 @@ const FavoriteCard: React.FC<FavoriteCardProps> = ({ favorite, onRemove }) => {
 export const FavoritesScreen: React.FC = () => {
   const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
+  const navigation = useNavigation();
   const dynamicStyles = createStyles(theme);
   
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [_removingId, setRemovingId] = useState<string | null>(null);
 
   const loadFavorites = useCallback(async () => {
     if (!isAuthenticated) {
@@ -161,10 +162,29 @@ export const FavoritesScreen: React.FC = () => {
   if (loading) {
     return (
       <SafeAreaView style={dynamicStyles.container} edges={['top']}>
-        <View style={dynamicStyles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={dynamicStyles.loadingText}>Loading favorites...</Text>
-        </View>
+        <ScrollView
+          style={dynamicStyles.scrollView}
+          contentContainerStyle={dynamicStyles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header Skeleton */}
+          <View style={dynamicStyles.header}>
+            <Skeleton width={48} height={48} borderRadius={24} style={dynamicStyles.skeletonMargin} />
+            <Skeleton width={150} height={16} />
+          </View>
+
+          {/* Favorites List Skeleton */}
+          <View style={dynamicStyles.favoritesList}>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <SkeletonCard
+                key={index}
+                showTitle={true}
+                showSubtitle={true}
+                lines={2}
+              />
+            ))}
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -210,8 +230,21 @@ export const FavoritesScreen: React.FC = () => {
             <Text style={dynamicStyles.emptyIcon}>⭐</Text>
             <Text style={dynamicStyles.emptyTitle}>No Favorites Yet</Text>
             <Text style={dynamicStyles.emptyText}>
-              Tap the star icon on any shloka to save it to your favorites!
+              Start building your collection of favorite shlokas! Swipe left on any shloka card to save it to your favorites for easy access later.
             </Text>
+            <TouchableOpacity
+              style={dynamicStyles.emptyButton}
+              onPress={() => {
+                // Navigate to Shlokas tab
+                navigation.getParent()?.navigate('Shlokas');
+              }}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Start reading shlokas"
+              accessibilityHint="Double tap to navigate to the shlokas screen and start reading"
+            >
+              <Text style={dynamicStyles.emptyButtonText}>Start Reading Shlokas</Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -348,6 +381,31 @@ const createStyles = (theme: any) => StyleSheet.create({
     color: theme.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  emptyButton: {
+    backgroundColor: theme.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    minHeight: 44, // Minimum touch target size
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  emptyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  skeletonMargin: {
+    marginBottom: 8,
   },
 });
 

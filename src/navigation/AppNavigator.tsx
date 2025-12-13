@@ -1,7 +1,7 @@
 /**
  * App Navigator - Handles authentication flow and main app navigation
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Text, View, ActivityIndicator, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -15,8 +15,10 @@ import { SignupScreen } from '../screens/SignupScreen';
 import { FloatingTabBar } from '../components/FloatingTabBar';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { AuthWrapper } from '../components/AuthWrapper';
+import { OnboardingFlow } from '../components/OnboardingFlow';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { hasCompletedOnboarding } from '../utils/onboardingStorage';
 
 export type RootTabParamList = {
   Home: undefined;
@@ -148,7 +150,40 @@ const LoadingScreen: React.FC = () => {
 // Root Stack Navigator - wraps tabs and includes ShlokaDetail
 const RootStackNavigator: React.FC = () => {
   const { theme } = useTheme();
-  
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
+
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const completed = await hasCompletedOnboarding();
+        setShowOnboarding(!completed);
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        // Default to showing onboarding if there's an error
+        setShowOnboarding(true);
+      } finally {
+        setIsCheckingOnboarding(false);
+      }
+    };
+    checkOnboarding();
+  }, []);
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+  };
+
+  // Show loading while checking onboarding status
+  if (isCheckingOnboarding) {
+    return <LoadingScreen />;
+  }
+
+  // Show onboarding if not completed
+  if (showOnboarding) {
+    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  }
+
+  // Show main app
   return (
     <RootStack.Navigator
       screenOptions={{

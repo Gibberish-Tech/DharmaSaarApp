@@ -12,6 +12,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -81,7 +82,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         <View style={dynamicStyles.content}>
           {/* Header */}
           <View style={dynamicStyles.header}>
-            <Text style={dynamicStyles.omSymbol}>🕉️</Text>
+            <Image 
+              source={require('../assets/logo.png')} 
+              style={dynamicStyles.logo}
+              resizeMode="contain"
+            />
             <Text style={dynamicStyles.title}>नमस्ते</Text>
             <Text style={dynamicStyles.subtitle}>Welcome back to DharmaSaar</Text>
           </View>
@@ -181,14 +186,15 @@ const createStyles = (theme: any) =>
       alignItems: 'center',
       marginBottom: 48,
     },
-    omSymbol: {
-      fontSize: 64,
+    logo: {
+      width: 120,
+      height: 120,
       marginBottom: 16,
     },
     title: {
       fontSize: 32,
       fontWeight: 'bold',
-      color: theme.text,
+      color: theme.heading,
       marginBottom: 8,
     },
     subtitle: {

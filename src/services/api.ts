@@ -2,6 +2,7 @@
  * API service for communicating with the backend
  */
 import { apiConfig } from '../config/api';
+import { getUserFriendlyError, calculateBackoffDelay, checkNetworkStatus, waitForNetwork } from '../utils/errorHandler';
 
 export interface Shloka {
   id: string; // UUID as string from JSON
@@ -140,6 +141,16 @@ class ApiService {
     const url = `${this.baseUrl}${endpoint}`;
     
     try {
+      // Check network status before making request
+      const isOnline = await checkNetworkStatus();
+      if (!isOnline && retryCount === 0) {
+        // Wait for network connection with timeout
+        const networkAvailable = await waitForNetwork(5000);
+        if (!networkAvailable) {
+          throw new Error('No internet connection. Please check your network settings.');
+        }
+      }
+
       // Create abort controller for timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), apiConfig.timeout);
@@ -209,43 +220,49 @@ class ApiService {
           errorData.message ||
           `HTTP ${response.status}: ${response.statusText}`;
         
-        // Retry on server errors (5xx) or network errors
+        // Determine if we should retry based on status code
         const shouldRetry = 
-          (response.status >= 500 || response.status === 0) &&
+          (response.status >= 500 || response.status === 0 || response.status === 429) &&
           retryCount < apiConfig.retry.maxAttempts;
         
         if (shouldRetry) {
-          await new Promise<void>(resolve => setTimeout(() => resolve(), apiConfig.retry.delay));
+          // Use exponential backoff
+          const delay = calculateBackoffDelay(retryCount, apiConfig.retry.delay);
+          await new Promise<void>(resolve => setTimeout(() => resolve(), delay));
           return this.request<T>(endpoint, options, retryCount + 1);
         }
         
-        throw new Error(errorMessage);
+        // Use user-friendly error message
+        const errorInfo = getUserFriendlyError(new Error(errorMessage));
+        throw new Error(errorInfo.userFriendlyMessage);
       }
 
       return await response.json();
     } catch (error) {
       // Handle abort (timeout)
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timeout: The server took too long to respond');
+        const errorInfo = getUserFriendlyError(new Error('Request timeout'));
+        throw new Error(errorInfo.userFriendlyMessage);
       }
       
-      // Retry on network errors
-      if (retryCount < apiConfig.retry.maxAttempts) {
-        await new Promise<void>(resolve => setTimeout(() => resolve(), apiConfig.retry.delay));
-        return this.request<T>(endpoint, options, retryCount + 1);
-      }
-      
-      if (error instanceof Error) {
-        // Provide more helpful error messages
-        if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
-          throw new Error(
-            `Cannot connect to server at ${this.baseUrl}. ` +
-            `Please ensure the backend is running and the URL is correct.`
-          );
-        }
+      // If it's already a user-friendly error, re-throw it
+      if (error instanceof Error && error.message.includes('No internet connection')) {
         throw error;
       }
-      throw new Error('Network error: Unable to connect to server');
+      
+      // Retry on network errors with exponential backoff
+      if (retryCount < apiConfig.retry.maxAttempts) {
+        const errorInfo = getUserFriendlyError(error);
+        if (errorInfo.canRetry && errorInfo.isNetworkError) {
+          const delay = calculateBackoffDelay(retryCount, apiConfig.retry.delay);
+          await new Promise<void>(resolve => setTimeout(() => resolve(), delay));
+          return this.request<T>(endpoint, options, retryCount + 1);
+        }
+      }
+      
+      // Use user-friendly error message
+      const errorInfo = getUserFriendlyError(error);
+      throw new Error(errorInfo.userFriendlyMessage);
     }
   }
 

@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -114,7 +115,11 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
           <View style={dynamicStyles.content}>
             {/* Header */}
             <View style={dynamicStyles.header}>
-              <Text style={dynamicStyles.omSymbol}>🕉️</Text>
+              <Image 
+                source={require('../assets/logo.png')} 
+                style={dynamicStyles.logo}
+                resizeMode="contain"
+              />
               <Text style={dynamicStyles.title}>Join DharmaSaar</Text>
               <Text style={dynamicStyles.subtitle}>Start your spiritual journey</Text>
             </View>
@@ -258,14 +263,15 @@ const createStyles = (theme: any) =>
       alignItems: 'center',
       marginBottom: 40,
     },
-    omSymbol: {
-      fontSize: 64,
+    logo: {
+      width: 120,
+      height: 120,
       marginBottom: 16,
     },
     title: {
       fontSize: 32,
       fontWeight: 'bold',
-      color: theme.text,
+      color: theme.heading,
       marginBottom: 8,
     },
     subtitle: {

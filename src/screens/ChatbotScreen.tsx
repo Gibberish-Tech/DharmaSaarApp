@@ -21,6 +21,7 @@ import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/api';
 import { TAB_BAR_TOTAL_HEIGHT } from '../constants/layout';
 import { ShlokaLinkedText } from '../components/ShlokaLinkedText';
+import { ErrorDisplay } from '../components/ErrorDisplay';
 
 interface Message {
   id: string;
@@ -249,7 +250,11 @@ export const ChatbotScreen: React.FC = () => {
 
           {error && (
             <View style={dynamicStyles.errorContainer}>
-              <Text style={dynamicStyles.errorText}>{error}</Text>
+              <ErrorDisplay
+                error={error}
+                onRetry={sendMessage}
+                compact={true}
+              />
             </View>
           )}
         </ScrollView>
@@ -272,6 +277,10 @@ export const ChatbotScreen: React.FC = () => {
             onPress={sendMessage}
             disabled={!inputText.trim() || isLoading}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
+            accessibilityHint="Double tap to send your message to the chatbot"
+            accessibilityState={{ disabled: !inputText.trim() || isLoading }}
           >
             {isLoading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
@@ -341,6 +350,10 @@ export const ChatbotScreen: React.FC = () => {
                       ]}
                       onPress={() => loadConversation(item)}
                       activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Conversation ${item.title || 'Untitled'}`}
+                      accessibilityHint="Double tap to open this conversation"
+                      accessibilityState={{ selected: conversationId === item.id }}
                     >
                       <Text style={dynamicStyles.conversationPreview} numberOfLines={2}>
                         {getConversationPreview(item)}
@@ -393,7 +406,7 @@ const createStyles = (theme: any, insets: any) => StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: theme.text,
+    color: theme.heading,
     marginBottom: 4,
   },
   headerSubtitle: {
@@ -468,14 +481,8 @@ const createStyles = (theme: any, insets: any) => StyleSheet.create({
     fontWeight: '500',
   },
   errorContainer: {
-    backgroundColor: theme.error || '#FF6B6B',
-    padding: 12,
-    borderRadius: 8,
     marginTop: 8,
-  },
-  errorText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    marginHorizontal: 16,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -505,6 +512,7 @@ const createStyles = (theme: any, insets: any) => StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 20,
     minWidth: 70,
+    minHeight: 44, // Minimum touch target size
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1,7 +1,7 @@
 /**
  * Shloka Detail Screen - Display full shloka details
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -35,11 +35,7 @@ export const ShlokaDetailScreen: React.FC = () => {
   const [knowledgeItem, setKnowledgeItem] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadShloka();
-  }, [shlokaId]);
-
-  const loadShloka = async () => {
+  const loadShloka = useCallback(async () => {
     if (!isAuthenticated || !shlokaId) {
       setError('Authentication required');
       setLoading(false);
@@ -65,7 +61,11 @@ export const ShlokaDetailScreen: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated, shlokaId, navigation]);
+
+  useEffect(() => {
+    loadShloka();
+  }, [loadShloka]);
 
   if (loading) {
     return (

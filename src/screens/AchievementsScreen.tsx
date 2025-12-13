@@ -8,12 +8,12 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/api';
+import { Skeleton, SkeletonCard } from '../components/Skeleton';
 
 interface Achievement {
   id: string;
@@ -135,15 +135,34 @@ export const AchievementsScreen: React.FC = () => {
   }, [loadAchievements]);
 
   const unlockedCount = achievements.length;
-  const totalCount = achievements.length; // In future, we might show locked achievements too
 
   if (loading) {
     return (
       <SafeAreaView style={dynamicStyles.container} edges={['top']}>
-        <View style={dynamicStyles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={dynamicStyles.loadingText}>Loading achievements...</Text>
-        </View>
+        <ScrollView
+          style={dynamicStyles.scrollView}
+          contentContainerStyle={dynamicStyles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header Skeleton */}
+          <View style={dynamicStyles.header}>
+            <Skeleton width={48} height={48} borderRadius={24} style={dynamicStyles.skeletonMargin} />
+            <Skeleton width={200} height={16} />
+          </View>
+
+          {/* Achievements List Skeleton */}
+          <View style={dynamicStyles.achievementsList}>
+            {Array.from({ length: 4 }).map((_, index) => (
+              <SkeletonCard
+                key={index}
+                showIcon={true}
+                showTitle={true}
+                showSubtitle={true}
+                lines={1}
+              />
+            ))}
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -187,8 +206,22 @@ export const AchievementsScreen: React.FC = () => {
             <Text style={dynamicStyles.emptyIcon}>🏆</Text>
             <Text style={dynamicStyles.emptyTitle}>No Achievements Yet</Text>
             <Text style={dynamicStyles.emptyText}>
-              Start reading shlokas and building your streak to unlock achievements!
+              Your journey to unlocking achievements starts now! Read shlokas daily, build your streak, and earn XP to unlock amazing achievements and rewards.
             </Text>
+            <View style={dynamicStyles.emptyExamples}>
+              <View style={dynamicStyles.emptyExampleItem}>
+                <Text style={dynamicStyles.emptyExampleIcon}>📖</Text>
+                <Text style={dynamicStyles.emptyExampleText}>Read your first shloka</Text>
+              </View>
+              <View style={dynamicStyles.emptyExampleItem}>
+                <Text style={dynamicStyles.emptyExampleIcon}>🔥</Text>
+                <Text style={dynamicStyles.emptyExampleText}>Build a 7-day streak</Text>
+              </View>
+              <View style={dynamicStyles.emptyExampleItem}>
+                <Text style={dynamicStyles.emptyExampleIcon}>⭐</Text>
+                <Text style={dynamicStyles.emptyExampleText}>Level up and earn XP</Text>
+              </View>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -328,6 +361,34 @@ const createStyles = (theme: any) => StyleSheet.create({
     color: theme.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  emptyExamples: {
+    width: '100%',
+    gap: 12,
+    marginTop: 8,
+  },
+  emptyExampleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.cardBackground,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  emptyExampleIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  emptyExampleText: {
+    fontSize: 14,
+    color: theme.text,
+    fontWeight: '500',
+  },
+  skeletonMargin: {
+    marginBottom: 8,
   },
 });
 
