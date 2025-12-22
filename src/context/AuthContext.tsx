@@ -132,9 +132,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await apiService.login(email, password);
       await saveAuthState(response.user, response.tokens);
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+    } catch (error: any) {
+      // Only log unexpected errors, not authentication failures
+      const errorMessage = error?.message || String(error);
+      const isAuthError = errorMessage.toLowerCase().includes('invalid') || 
+                         errorMessage.toLowerCase().includes('login failed') ||
+                         errorMessage.toLowerCase().includes('email') ||
+                         errorMessage.toLowerCase().includes('password') ||
+                         errorMessage.toLowerCase().includes('credentials');
+      
+      if (!isAuthError) {
+        // Log unexpected errors (network issues, server errors, etc.)
+        console.error('Login error:', error);
+      }
+      
+      // Re-throw with user-friendly message
+      const userFriendlyMessage = isAuthError 
+        ? 'Invalid email or password. Please try again.'
+        : errorMessage;
+      throw new Error(userFriendlyMessage);
     }
   };
 
@@ -142,9 +158,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await apiService.signup(name, email, password, passwordConfirm);
       await saveAuthState(response.user, response.tokens);
-    } catch (error) {
-      console.error('Signup error:', error);
-      throw error;
+    } catch (error: any) {
+      // Only log unexpected errors, not validation failures
+      const errorMessage = error?.message || String(error);
+      const isValidationError = errorMessage.toLowerCase().includes('invalid') || 
+                                errorMessage.toLowerCase().includes('already exists') ||
+                                errorMessage.toLowerCase().includes('email') ||
+                                errorMessage.toLowerCase().includes('password') ||
+                                errorMessage.toLowerCase().includes('validation');
+      
+      if (!isValidationError) {
+        // Log unexpected errors (network issues, server errors, etc.)
+        console.error('Signup error:', error);
+      }
+      
+      // Re-throw with user-friendly message
+      throw new Error(errorMessage);
     }
   };
 

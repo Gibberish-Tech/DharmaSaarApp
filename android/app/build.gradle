@@ -93,6 +93,24 @@ android {
         versionCode 2
         versionName "1.0"
     }
+    
+    // Suppress deprecation warnings from dependencies
+    // These warnings come from libraries that haven't updated for RN 0.82+ yet
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions {
+            jvmTarget = "17"
+            // Suppress deprecation warnings
+            freeCompilerArgs += [
+                "-Xsuppress-version-warnings"
+            ]
+        }
+    }
+    
+    // Suppress Java deprecation warnings
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs << "-Xlint:-deprecation"
+        options.deprecation = false
+    }
     signingConfigs {
         debug {
             storeFile file('debug.keystore')

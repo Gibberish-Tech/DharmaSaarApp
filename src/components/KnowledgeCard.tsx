@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Share,
   Platform,
+  Alert,
 } from 'react-native';
 import { KnowledgeItem } from '../data/mockKnowledge';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/api';
 import { hasSeenCollapsibleHint, markCollapsibleHintAsSeen } from '../utils/onboardingStorage';
+import { ttsService } from '../services/ttsService';
 
 const FLOATING_TAB_BAR_HEIGHT = 20; // Height of the floating tab bar
 const FLOATING_TAB_BAR_MARGIN = 16; // Bottom margin of the floating tab bar
@@ -116,6 +118,8 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
   const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
   const dynamicStyles = createStyles(theme);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   
   const [isFavorite, setIsFavorite] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
@@ -238,6 +242,88 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
     }
   };
 
+  const handleTextToSpeech = async () => {
+    try {
+      if (isSpeaking) {
+        if (isPaused) {
+          await ttsService.resume();
+          setIsPaused(ttsService.getIsPaused());
+          setIsSpeaking(ttsService.getIsPlaying());
+        } else {
+          await ttsService.pause();
+          setIsPaused(ttsService.getIsPaused());
+          setIsSpeaking(ttsService.getIsPlaying());
+        }
+      } else {
+        // Use transliteration for TTS (backend uses Google TTS which works great for transliteration)
+        let textToSpeak = '';
+        
+        if (transliteration && transliteration.trim()) {
+          // Prioritize transliteration as it's readable by TTS engines
+          textToSpeak = transliteration.trim();
+        } else if (sanskritText && sanskritText.trim()) {
+          // Fallback to Sanskrit text if no transliteration (though it may not work well)
+          textToSpeak = sanskritText.trim();
+          console.warn('No transliteration available, using Sanskrit text (may not pronounce correctly)');
+        }
+        
+        if (textToSpeak) {
+          console.log('TTS: Attempting to speak:', textToSpeak.substring(0, 100));
+          setIsSpeaking(true);
+          setIsPaused(false);
+          
+          // Use backend TTS service (Google TTS - free, no API key needed)
+          await ttsService.speak(textToSpeak, { language: 'en-US', rate: 0.45 });
+          console.log('TTS: Speak command completed');
+          
+          // Sync state with service
+          setIsSpeaking(ttsService.getIsPlaying());
+          setIsPaused(ttsService.getIsPaused());
+          
+          // Poll for playback completion (service will update its state)
+          const checkInterval = setInterval(() => {
+            const playing = ttsService.getIsPlaying();
+            const paused = ttsService.getIsPaused();
+            setIsSpeaking(playing);
+            setIsPaused(paused);
+            if (!playing && !paused) {
+              clearInterval(checkInterval);
+            }
+          }, 500);
+          
+          // Clear interval after reasonable timeout (5 minutes max)
+          setTimeout(() => clearInterval(checkInterval), 5 * 60 * 1000);
+        } else {
+          // Show alert if no text is available
+          Alert.alert(
+            'No Text Available',
+            'This shloka does not have transliteration text available for pronunciation.',
+            [{ text: 'OK' }]
+          );
+        }
+      }
+    } catch (error) {
+      console.error('TTS: Error with text-to-speech:', error);
+      setIsSpeaking(false);
+      setIsPaused(false);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert(
+        'Text-to-Speech Error',
+        `Unable to read the shloka: ${errorMessage}\n\nPlease check your internet connection and try again.`,
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  // Stop speech when component unmounts or item changes
+  useEffect(() => {
+    return () => {
+      ttsService.stop();
+      setIsSpeaking(false);
+      setIsPaused(false);
+    };
+  }, [item.id]);
+
   return (
     <View style={dynamicStyles.card}>
       <ScrollView
@@ -277,6 +363,21 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
         {sanskritText ? (
           <View style={dynamicStyles.sanskritContainer}>
             <Text style={dynamicStyles.sanskritText}>{sanskritText}</Text>
+            <TouchableOpacity
+              style={dynamicStyles.ttsButton}
+              onPress={handleTextToSpeech}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={isSpeaking ? (isPaused ? 'Resume pronunciation' : 'Pause pronunciation') : 'Listen to pronunciation'}
+              accessibilityHint="Double tap to hear the Shloka pronunciation"
+            >
+              <Text style={dynamicStyles.ttsIcon}>
+                {isSpeaking ? (isPaused ? '▶️' : '⏸️') : '🔊'}
+              </Text>
+              <Text style={dynamicStyles.ttsButtonText}>
+                {isSpeaking ? (isPaused ? 'Resume' : 'Pause') : 'Listen'}
+              </Text>
+            </TouchableOpacity>
           </View>
         ) : null}
 
@@ -559,6 +660,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     width: '100%',
     marginBottom: 16,
     paddingHorizontal: 32,
+    alignItems: 'center',
   },
   sanskritText: {
     color: theme.sanskritText,
@@ -567,6 +669,28 @@ const createStyles = (theme: any) => StyleSheet.create({
     textAlign: 'center',
     lineHeight: 40,
     letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  ttsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    backgroundColor: theme.primary + '15',
+    minHeight: 44,
+    borderWidth: 1.5,
+    borderColor: theme.primary + '40',
+    gap: 8,
+  },
+  ttsIcon: {
+    fontSize: 18,
+  },
+  ttsButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.primary,
   },
   transliterationContainer: {
     width: '100%',

@@ -30,7 +30,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
 
   const validateForm = (): boolean => {
     const newErrors: { email?: string; password?: string } = {};
@@ -56,16 +56,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       return;
     }
 
+    // Clear any previous general errors
+    setErrors(prev => ({ ...prev, general: undefined }));
+
     setIsLoading(true);
     try {
       await login(email.trim(), password);
       // Navigation will be handled by AppNavigator based on auth state
     } catch (error: any) {
-      Alert.alert(
-        'Login Failed',
-        error.message || 'Invalid email or password. Please try again.',
-        [{ text: 'OK' }]
-      );
+      // Show user-friendly error message inline
+      const errorMessage = error?.message || 'Invalid email or password. Please try again.';
+      setErrors(prev => ({ ...prev, general: errorMessage }));
+      
+      // Also show Alert for important errors (network issues, server errors)
+      const isNetworkError = errorMessage.toLowerCase().includes('network') || 
+                            errorMessage.toLowerCase().includes('connection') ||
+                            errorMessage.toLowerCase().includes('timeout') ||
+                            errorMessage.toLowerCase().includes('server');
+      
+      if (isNetworkError) {
+        Alert.alert(
+          'Connection Error',
+          errorMessage,
+          [{ text: 'OK' }]
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -102,8 +117,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
-                  if (errors.email) {
-                    setErrors({ ...errors, email: undefined });
+                  if (errors.email || errors.general) {
+                    setErrors({ ...errors, email: undefined, general: undefined });
                   }
                 }}
                 keyboardType="email-address"
@@ -125,8 +140,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
-                  if (errors.password) {
-                    setErrors({ ...errors, password: undefined });
+                  if (errors.password || errors.general) {
+                    setErrors({ ...errors, password: undefined, general: undefined });
                   }
                 }}
                 secureTextEntry
@@ -138,6 +153,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 <Text style={dynamicStyles.errorText}>{errors.password}</Text>
               )}
             </View>
+
+            {errors.general && (
+              <View style={dynamicStyles.generalErrorContainer}>
+                <Text style={dynamicStyles.generalErrorText}>{errors.general}</Text>
+              </View>
+            )}
 
             <TouchableOpacity
               style={[dynamicStyles.button, isLoading && dynamicStyles.buttonDisabled]}
@@ -230,6 +251,19 @@ const createStyles = (theme: any) =>
       fontSize: 12,
       color: '#FF4444',
       marginTop: 4,
+    },
+    generalErrorContainer: {
+      backgroundColor: '#FFF5F5',
+      borderRadius: 8,
+      padding: 12,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: '#FF4444',
+    },
+    generalErrorText: {
+      fontSize: 14,
+      color: '#FF4444',
+      textAlign: 'center',
     },
     button: {
       backgroundColor: theme.primary,

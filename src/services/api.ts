@@ -367,26 +367,40 @@ class ApiService {
     email: string,
     password: string
   ): Promise<{ user: { id: string; name: string; email: string; created_at?: string }; tokens: { access: string; refresh: string } }> {
-    const response = await this.request<{
-      message: string;
-      data: {
-        user: { id: string; name: string; email: string; created_at?: string };
-        tokens: { access: string; refresh: string };
-      };
-      errors: any;
-    }>('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        email,
-        password,
-      }),
-    });
+    try {
+      const response = await this.request<{
+        message: string;
+        data: {
+          user: { id: string; name: string; email: string; created_at?: string };
+          tokens: { access: string; refresh: string };
+        };
+        errors: any;
+      }>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
 
-    if (response.data) {
-      return response.data;
+      if (response.data) {
+        return response.data;
+      }
+
+      // Extract error message from response
+      const errorMessage = response.errors?.detail || 
+                          response.errors?.non_field_errors?.[0] ||
+                          response.message ||
+                          'Invalid email or password. Please try again.';
+      throw new Error(errorMessage);
+    } catch (error: any) {
+      // If it's already a user-friendly error, re-throw it
+      if (error instanceof Error) {
+        throw error;
+      }
+      // Otherwise, provide a default message
+      throw new Error('Invalid email or password. Please try again.');
     }
-
-    throw new Error(response.errors?.detail || 'Login failed');
   }
 
   /**
@@ -670,7 +684,7 @@ class ApiService {
       message: string;
       data: any;
       errors: any;
-    }>(`/api/favorites/${shlokaId}`, {
+    }>(`/api/favorites?shloka_id=${shlokaId}`, {
       method: 'DELETE',
     });
 
