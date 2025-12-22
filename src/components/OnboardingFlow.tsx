@@ -105,14 +105,26 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
       });
     } else {
       // Complete onboarding
-      await markOnboardingAsCompleted();
-      onComplete();
+      try {
+        await markOnboardingAsCompleted();
+        onComplete();
+      } catch (error) {
+        console.error('Error completing onboarding:', error);
+        // Still call onComplete to prevent getting stuck
+        onComplete();
+      }
     }
   };
 
   const handleSkip = async () => {
-    await markOnboardingAsCompleted();
-    onComplete();
+    try {
+      await markOnboardingAsCompleted();
+      onComplete();
+    } catch (error) {
+      console.error('Error skipping onboarding:', error);
+      // Still call onComplete to prevent getting stuck
+      onComplete();
+    }
   };
 
   const screens = [

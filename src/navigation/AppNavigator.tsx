@@ -150,40 +150,7 @@ const LoadingScreen: React.FC = () => {
 // Root Stack Navigator - wraps tabs and includes ShlokaDetail
 const RootStackNavigator: React.FC = () => {
   const { theme } = useTheme();
-  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
-  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
 
-  useEffect(() => {
-    const checkOnboarding = async () => {
-      try {
-        const completed = await hasCompletedOnboarding();
-        setShowOnboarding(!completed);
-      } catch (error) {
-        console.error('Error checking onboarding status:', error);
-        // Default to showing onboarding if there's an error
-        setShowOnboarding(true);
-      } finally {
-        setIsCheckingOnboarding(false);
-      }
-    };
-    checkOnboarding();
-  }, []);
-
-  const handleOnboardingComplete = () => {
-    setShowOnboarding(false);
-  };
-
-  // Show loading while checking onboarding status
-  if (isCheckingOnboarding) {
-    return <LoadingScreen />;
-  }
-
-  // Show onboarding if not completed
-  if (showOnboarding) {
-    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
-  }
-
-  // Show main app
   return (
     <RootStack.Navigator
       screenOptions={{
@@ -220,12 +187,40 @@ const RootStackNavigator: React.FC = () => {
 // Main App Navigator - switches between auth and main app
 export const AppNavigator: React.FC = () => {
   const { isLoading } = useAuth();
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
 
-  // Show loading screen while initial auth state is being loaded
-  if (isLoading) {
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const completed = await hasCompletedOnboarding();
+        setShowOnboarding(!completed);
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        // Default to showing onboarding if there's an error
+        setShowOnboarding(true);
+      } finally {
+        setIsCheckingOnboarding(false);
+      }
+    };
+    checkOnboarding();
+  }, []);
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+  };
+
+  // Show loading screen while initial auth state is being loaded or checking onboarding
+  if (isLoading || isCheckingOnboarding) {
     return <LoadingScreen />;
   }
 
+  // Show onboarding if not completed (regardless of auth state)
+  if (showOnboarding) {
+    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  }
+
+  // After onboarding, show auth or main app based on authentication state
   return (
     <>
       {/* Main app with root stack - only shown when authenticated */}

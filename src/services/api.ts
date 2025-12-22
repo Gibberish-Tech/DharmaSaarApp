@@ -914,20 +914,156 @@ class ApiService {
   }
 
   /**
-   * Delete user account
+   * Deactivate user account
    */
-  async deleteAccount(): Promise<void> {
+  async deactivateAccount(): Promise<{ message: string }> {
     const response = await this.request<{
       message: string;
       data: any;
       errors: any;
-    }>('/api/user/delete-account', {
+    }>('/api/user/deactivate-account', {
+      method: 'POST',
+    });
+
+    if (response.errors) {
+      throw new Error(response.errors?.detail || 'Failed to deactivate account');
+    }
+
+    return { message: response.message || 'Account deactivated successfully' };
+  }
+
+  /**
+   * Delete user account (soft or hard delete)
+   * @param hardDelete - If true, permanently delete account. If false, soft delete (default: false)
+   */
+  async deleteAccount(hardDelete: boolean = false): Promise<{ message: string; hard_delete: boolean }> {
+    const url = hardDelete 
+      ? '/api/user/delete-account?hard=true'
+      : '/api/user/delete-account';
+    
+    const response = await this.request<{
+      message: string;
+      data: { hard_delete: boolean };
+      errors: any;
+    }>(url, {
       method: 'DELETE',
     });
 
     if (response.errors) {
       throw new Error(response.errors?.detail || 'Failed to delete account');
     }
+
+    return {
+      message: response.message || 'Account deleted successfully',
+      hard_delete: response.data?.hard_delete || hardDelete,
+    };
+  }
+
+  /**
+   * Update a chat conversation (e.g., rename title)
+   * @param conversationId - ID of the conversation to update
+   * @param title - New title for the conversation
+   */
+  async updateConversation(
+    conversationId: string,
+    title: string | null
+  ): Promise<{
+    id: string;
+    title: string | null;
+    created_at: string;
+    updated_at: string;
+    messages: Array<{
+      id: string;
+      role: 'user' | 'assistant';
+      content: string;
+      created_at: string;
+    }>;
+  }> {
+    const response = await this.request<{
+      message: string;
+      data: {
+        id: string;
+        title: string | null;
+        created_at: string;
+        updated_at: string;
+        messages: Array<{
+          id: string;
+          role: 'user' | 'assistant';
+          content: string;
+          created_at: string;
+        }>;
+      };
+      errors: any;
+    }>(`/api/chat/conversations/${conversationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title }),
+    });
+
+    if (response.errors) {
+      throw new Error(response.errors?.detail || 'Failed to update conversation');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Delete a chat conversation (soft or hard delete)
+   * @param conversationId - ID of the conversation to delete
+   * @param hardDelete - If true, permanently delete conversation. If false, soft delete (default: false)
+   */
+  async deleteConversation(
+    conversationId: string,
+    hardDelete: boolean = false
+  ): Promise<{ message: string; conversation_id: string; hard_delete: boolean }> {
+    const url = hardDelete
+      ? `/api/chat/conversations/${conversationId}/delete?hard=true`
+      : `/api/chat/conversations/${conversationId}/delete`;
+    
+    const response = await this.request<{
+      message: string;
+      data: { conversation_id: string; hard_delete: boolean };
+      errors: any;
+    }>(url, {
+      method: 'DELETE',
+    });
+
+    if (response.errors) {
+      throw new Error(response.errors?.detail || 'Failed to delete conversation');
+    }
+
+    return {
+      message: response.message || 'Conversation deleted successfully',
+      conversation_id: response.data?.conversation_id || conversationId,
+      hard_delete: response.data?.hard_delete || hardDelete,
+    };
+  }
+
+  /**
+   * Delete all chat conversations for the user (soft or hard delete)
+   * @param hardDelete - If true, permanently delete all conversations. If false, soft delete (default: false)
+   */
+  async deleteAllConversations(hardDelete: boolean = false): Promise<{ message: string; count: number; hard_delete: boolean }> {
+    const url = hardDelete
+      ? '/api/chat/conversations/all?hard=true'
+      : '/api/chat/conversations/all';
+    
+    const response = await this.request<{
+      message: string;
+      data: { count: number; hard_delete: boolean };
+      errors: any;
+    }>(url, {
+      method: 'DELETE',
+    });
+
+    if (response.errors) {
+      throw new Error(response.errors?.detail || 'Failed to delete conversations');
+    }
+
+    return {
+      message: response.message || 'Conversations deleted successfully',
+      count: response.data?.count || 0,
+      hard_delete: response.data?.hard_delete || hardDelete,
+    };
   }
 }
 

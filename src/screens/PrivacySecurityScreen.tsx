@@ -9,15 +9,19 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Switch,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/api';
 import { CONTENT_BOTTOM_PADDING } from '../constants/layout';
+import { CustomAlert } from '../components/CustomAlert';
+import { useCustomAlert } from '../hooks/useCustomAlert';
+import { ProfileStackParamList } from '../navigation/ProfileStack';
 
 interface SecurityItemProps {
   icon: string;
@@ -55,11 +59,15 @@ const SecurityItem: React.FC<SecurityItemProps> = ({
   );
 };
 
+type NavigationProp = StackNavigationProp<ProfileStackParamList, 'PrivacySecurity'>;
+
 export const PrivacySecurityScreen: React.FC = () => {
   const { theme } = useTheme();
   const { logout } = useAuth();
+  const navigation = useNavigation<NavigationProp>();
   const insets = useSafeAreaInsets();
   const dynamicStyles = createStyles(theme, insets);
+  const { alertConfig, visible: alertVisible, showAlert, hideAlert } = useCustomAlert();
 
   // Password change state
   const [showPasswordChange, setShowPasswordChange] = useState(false);
@@ -75,17 +83,29 @@ export const PrivacySecurityScreen: React.FC = () => {
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Validation Error', 'Please fill in all password fields');
+      showAlert({
+        title: 'Validation Error',
+        message: 'Please fill in all password fields.',
+        buttons: [{ text: 'OK' }],
+      });
       return;
     }
 
     if (newPassword.length < 8) {
-      Alert.alert('Validation Error', 'Password must be at least 8 characters long');
+      showAlert({
+        title: 'Validation Error',
+        message: 'Password must be at least 8 characters long.',
+        buttons: [{ text: 'OK' }],
+      });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Validation Error', 'New passwords do not match');
+      showAlert({
+        title: 'Validation Error',
+        message: 'New passwords do not match. Please try again.',
+        buttons: [{ text: 'OK' }],
+      });
       return;
     }
 
@@ -93,10 +113,10 @@ export const PrivacySecurityScreen: React.FC = () => {
     try {
       await apiService.changePassword(currentPassword, newPassword);
       
-      Alert.alert(
-        'Success',
-        'Password changed successfully',
-        [
+      showAlert({
+        title: 'Success',
+        message: 'Password changed successfully.',
+        buttons: [
           {
             text: 'OK',
             onPress: () => {
@@ -106,64 +126,141 @@ export const PrivacySecurityScreen: React.FC = () => {
               setConfirmPassword('');
             },
           },
-        ]
-      );
+        ],
+      });
     } catch (error: any) {
-      Alert.alert(
-        'Error',
-        error.message || 'Failed to change password. Please check your current password and try again.'
-      );
+      showAlert({
+        title: 'Error',
+        message: error.message || 'Failed to change password. Please check your current password and try again.',
+        buttons: [{ text: 'OK' }],
+      });
     } finally {
       setIsChangingPassword(false);
     }
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted.',
-      [
+  const handleDeactivateAccount = () => {
+    showAlert({
+      title: 'Deactivate Account',
+      message: 'Are you sure you want to deactivate your account?\n\n⏸️ ACCOUNT DEACTIVATION:\n• Your account will be temporarily disabled\n• You will not be able to log in or access your data\n• All your data will be preserved on our servers\n• You can contact support to reactivate it at any time\n• Your reading progress, favorites, and conversations will remain intact\n\nThis is a reversible action. You can reactivate your account later.',
+      buttons: [
         {
           text: 'Cancel',
           style: 'cancel',
         },
         {
-          text: 'Delete',
+          text: 'Deactivate',
           style: 'destructive',
           onPress: async () => {
-            // Second confirmation
-            Alert.alert(
-              'Final Confirmation',
-              'This will permanently delete your account and all associated data. Type DELETE to confirm.',
-              [
+            try {
+              await apiService.deactivateAccount();
+              // Logout after successful account deactivation
+              await logout();
+              showAlert({
+                title: 'Account Deactivated',
+                message: 'Your account has been deactivated successfully. Contact support to reactivate it.',
+                buttons: [{ text: 'OK' }],
+              });
+            } catch (error: any) {
+              showAlert({
+                title: 'Error',
+                message: error.message || 'Failed to deactivate account. Please try again.',
+                buttons: [{ text: 'OK' }],
+              });
+            }
+          },
+        },
+      ],
+    });
+  };
+
+  const handleDeleteAccount = () => {
+    showAlert({
+      title: 'Delete Account',
+      message: 'Choose how you want to delete your account:',
+      buttons: [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Soft Delete',
+          onPress: () => {
+            showAlert({
+              title: 'Soft Delete Account',
+              message: `Are you sure you want to soft delete your account?\n\n🗑️ SOFT DELETION:\n• Your account will be marked as deleted\n• All your data will be kept on our servers for 30 days\n• You can contact support to restore it within this period\n• After 30 days, your account and data will be permanently deleted\n• This includes: reading progress, favorites, conversations, achievements, and streaks\n\nThis is a reversible action. You can restore your account within 30 days.`,
+              buttons: [
                 {
                   text: 'Cancel',
                   style: 'cancel',
                 },
                 {
-                  text: 'Delete Account',
+                  text: 'Soft Delete',
                   style: 'destructive',
                   onPress: async () => {
                     try {
-                      await apiService.deleteAccount();
+                      const result = await apiService.deleteAccount(false);
                       // Logout after successful account deletion
                       await logout();
-                      Alert.alert(
-                        'Account Deleted',
-                        'Your account has been deleted successfully',
-                        [{ text: 'OK' }]
-                      );
+                      showAlert({
+                        title: 'Account Deleted',
+                        message: result.message || 'Your account has been deleted. Contact support within 30 days to restore it.',
+                        buttons: [{ text: 'OK' }],
+                      });
                     } catch (error: any) {
-                      Alert.alert('Error', error.message || 'Failed to delete account');
+                      showAlert({
+                        title: 'Error',
+                        message: error.message || 'Failed to delete account. Please try again.',
+                        buttons: [{ text: 'OK' }],
+                      });
                     }
                   },
                 },
-              ]
-            );
+              ],
+            });
           },
         },
-      ]
-    );
+        {
+          text: 'Permanent Delete',
+          style: 'destructive',
+          onPress: () => {
+            // Second confirmation for hard delete
+            showAlert({
+              title: 'Permanent Delete - Final Warning',
+              message: `⚠️ CRITICAL WARNING ⚠️\n\nAre you absolutely sure you want to PERMANENTLY delete your account?\n\n🚨 PERMANENT DELETION:\n• Your account will be immediately and permanently removed\n• ALL your data will be permanently erased from our servers\n• This action CANNOT be undone\n• You will NOT be able to recover any data\n• This includes:\n  - All reading progress and streaks\n  - All favorite shlokas\n  - All chat conversations\n  - All achievements and statistics\n  - Your entire account history\n\nThis is a final, irreversible action. Please confirm you understand the consequences.`,
+              buttons: [
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                },
+                {
+                  text: 'Permanently Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      const result = await apiService.deleteAccount(true);
+                      // Logout after successful account deletion
+                      await logout();
+                      showAlert({
+                        title: 'Account Permanently Deleted',
+                        message: result.message || 'Your account and all data have been permanently deleted. This action cannot be undone.',
+                        buttons: [{ text: 'OK' }],
+                      });
+                    } catch (error: any) {
+                      showAlert({
+                        title: 'Error',
+                        message: error.message || 'Failed to delete account. Please try again.',
+                        buttons: [{ text: 'OK' }],
+                      });
+                    }
+                  },
+                },
+              ],
+            });
+          },
+        },
+      ],
+    });
   };
 
   return (
@@ -250,7 +347,11 @@ export const PrivacySecurityScreen: React.FC = () => {
               title="Two-Factor Authentication"
               description="Add an extra layer of security (Coming soon)"
               onPress={() => {
-                Alert.alert('Coming Soon', 'Two-factor authentication will be available in a future update');
+                showAlert({
+                  title: 'Coming Soon',
+                  message: 'Two-factor authentication will be available in a future update.',
+                  buttons: [{ text: 'OK' }],
+                });
               }}
             />
             <View style={dynamicStyles.divider} />
@@ -259,7 +360,11 @@ export const PrivacySecurityScreen: React.FC = () => {
               title="Active Sessions"
               description="View and manage devices where you're logged in (Coming soon)"
               onPress={() => {
-                Alert.alert('Coming Soon', 'Session management will be available in a future update');
+                showAlert({
+                  title: 'Coming Soon',
+                  message: 'Session management will be available in a future update.',
+                  buttons: [{ text: 'OK' }],
+                });
               }}
             />
           </View>
@@ -269,6 +374,13 @@ export const PrivacySecurityScreen: React.FC = () => {
         <View style={dynamicStyles.section}>
           <Text style={dynamicStyles.sectionTitle}>Privacy Settings</Text>
           <View style={dynamicStyles.sectionContent}>
+            <SecurityItem
+              icon="📄"
+              title="Privacy Policy"
+              description="View our complete privacy policy"
+              onPress={() => navigation.navigate('PrivacyPolicy')}
+            />
+            <View style={dynamicStyles.divider} />
             <View style={dynamicStyles.securityItem}>
               <Text style={dynamicStyles.securityIcon}>📊</Text>
               <View style={dynamicStyles.securityContent}>
@@ -331,7 +443,11 @@ export const PrivacySecurityScreen: React.FC = () => {
               title="Export Data"
               description="Download a copy of your data (Coming soon)"
               onPress={() => {
-                Alert.alert('Coming Soon', 'Data export will be available in a future update');
+                showAlert({
+                  title: 'Coming Soon',
+                  message: 'Data export will be available in a future update.',
+                  buttons: [{ text: 'OK' }],
+                });
               }}
             />
             <View style={dynamicStyles.divider} />
@@ -340,20 +456,24 @@ export const PrivacySecurityScreen: React.FC = () => {
               title="Clear Cache"
               description="Clear cached data to free up space"
               onPress={() => {
-                Alert.alert(
-                  'Clear Cache',
-                  'This will clear all cached data. You may need to re-download some content.',
-                  [
+                showAlert({
+                  title: 'Clear Cache',
+                  message: 'This will clear all cached data. You may need to re-download some content.',
+                  buttons: [
                     { text: 'Cancel', style: 'cancel' },
                     {
                       text: 'Clear',
                       onPress: () => {
                         // TODO: Implement cache clearing
-                        Alert.alert('Success', 'Cache cleared successfully');
+                        showAlert({
+                          title: 'Success',
+                          message: 'Cache cleared successfully.',
+                          buttons: [{ text: 'OK' }],
+                        });
                       },
                     },
-                  ]
-                );
+                  ],
+                });
               }}
             />
           </View>
@@ -368,29 +488,25 @@ export const PrivacySecurityScreen: React.FC = () => {
               title="Sign Out"
               description="Sign out from this device"
               onPress={() => {
-                Alert.alert(
-                  'Sign Out',
-                  'Are you sure you want to sign out?',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Sign Out',
-                      style: 'destructive',
-                      onPress: async () => {
-                        // This will be handled by the parent ProfileScreen
-                        // For now, just show a message
-                        Alert.alert('Sign Out', 'Please use the Sign Out button on the Profile screen');
-                      },
-                    },
-                  ]
-                );
+                showAlert({
+                  title: 'Sign Out',
+                  message: 'Please use the Sign Out button on the Profile screen.',
+                  buttons: [{ text: 'OK' }],
+                });
               }}
+            />
+            <View style={dynamicStyles.divider} />
+            <SecurityItem
+              icon="⏸️"
+              title="Deactivate Account"
+              description="Temporarily disable your account (can be reactivated)"
+              onPress={handleDeactivateAccount}
             />
             <View style={dynamicStyles.divider} />
             <SecurityItem
               icon="❌"
               title="Delete Account"
-              description="Permanently delete your account and all data"
+              description="Delete your account (soft or permanent delete)"
               onPress={handleDeleteAccount}
             />
           </View>
@@ -404,6 +520,18 @@ export const PrivacySecurityScreen: React.FC = () => {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Custom Alert */}
+      {alertConfig && (
+        <CustomAlert
+          visible={alertVisible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttons={alertConfig.buttons}
+          onDismiss={hideAlert}
+          showCloseButton={alertConfig.showCloseButton}
+        />
+      )}
     </SafeAreaView>
   );
 };

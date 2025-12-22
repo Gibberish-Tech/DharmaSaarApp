@@ -8,6 +8,7 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { PrivacySecurityScreen } from '../screens/PrivacySecurityScreen';
+import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
 import { LearningStatsScreen } from '../screens/LearningStatsScreen';
 import { AchievementsScreen } from '../screens/AchievementsScreen';
 import { FavoritesScreen } from '../screens/FavoritesScreen';
@@ -18,6 +19,7 @@ export type ProfileStackParamList = {
   EditProfile: undefined;
   Notifications: undefined;
   PrivacySecurity: undefined;
+  PrivacyPolicy: undefined;
   LearningStats: undefined;
   Achievements: undefined;
   Favorites: undefined;
@@ -74,6 +76,13 @@ export const ProfileStack: React.FC = () => {
         component={PrivacySecurityScreen}
         options={{
           title: 'Privacy & Security',
+        }}
+      />
+      <Stack.Screen
+        name="PrivacyPolicy"
+        component={PrivacyPolicyScreen}
+        options={{
+          title: 'Privacy Policy',
         }}
       />
       <Stack.Screen

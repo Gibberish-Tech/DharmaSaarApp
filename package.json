@@ -11,7 +11,8 @@
     "log-android": "npx react-native log-android",
     "log-ios": "npx react-native log-ios",
     "logcat": "adb logcat *:S ReactNative:V ReactNativeJS:V",
-    "logcat-all": "adb logcat"
+    "logcat-all": "adb logcat",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -45,6 +46,8 @@
     "@types/react-test-renderer": "^19.1.0",
     "eslint": "^8.19.0",
     "jest": "^29.6.3",
+    "patch-package": "^8.0.1",
+    "postinstall-postinstall": "^2.1.0",
     "prettier": "2.8.8",
     "react-test-renderer": "19.1.1",
     "typescript": "^5.8.3"

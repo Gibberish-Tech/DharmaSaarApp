@@ -22,6 +22,8 @@ import { apiService } from '../services/api';
 import { TAB_BAR_TOTAL_HEIGHT } from '../constants/layout';
 import { ShlokaLinkedText } from '../components/ShlokaLinkedText';
 import { ErrorDisplay } from '../components/ErrorDisplay';
+import { CustomAlert } from '../components/CustomAlert';
+import { useCustomAlert } from '../hooks/useCustomAlert';
 
 interface Message {
   id: string;
@@ -43,6 +45,7 @@ export const ChatbotScreen: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const insets = useSafeAreaInsets();
   const dynamicStyles = createStyles(theme, insets);
+  const { alertConfig, visible: alertVisible, showAlert, hideAlert } = useCustomAlert();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -52,6 +55,10 @@ export const ChatbotScreen: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameText, setRenameText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -89,6 +96,86 @@ export const ChatbotScreen: React.FC = () => {
     setConversationId(undefined);
     setMessages([]);
     setShowHistory(false);
+  };
+
+  const handleDeleteConversation = (conversation: Conversation, hardDelete: boolean = false) => {
+    if (hardDelete) {
+      showAlert({
+        title: 'Permanent Delete Conversation',
+        message: `Are you sure you want to permanently delete this conversation?\n\n⚠️ PERMANENT DELETION:\n• All messages in this conversation will be permanently removed from our servers\n• This action CANNOT be undone\n• You will NOT be able to recover this conversation\n• All data will be immediately and permanently erased\n\nThis is a final action. Please confirm you understand the consequences.`,
+        buttons: [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => {},
+          },
+          {
+            text: 'Permanently Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await apiService.deleteConversation(conversation.id, true);
+                // If deleting current conversation, clear it
+                if (conversationId === conversation.id) {
+                  startNewConversation();
+                }
+                // Reload conversations
+                await loadConversations();
+                showAlert({
+                  title: 'Success',
+                  message: 'Conversation permanently deleted successfully.',
+                  buttons: [{ text: 'OK' }],
+                });
+              } catch (err: any) {
+                showAlert({
+                  title: 'Error',
+                  message: err.message || 'Failed to delete conversation. Please try again.',
+                  buttons: [{ text: 'OK' }],
+                });
+              }
+            },
+          },
+        ],
+      });
+    } else {
+      showAlert({
+        title: 'Delete Conversation',
+        message: `Are you sure you want to delete this conversation?\n\n🗑️ SOFT DELETION:\n• This conversation will be hidden from your chat list\n• Your data will be kept on our servers for 30 days\n• You can contact support to restore it within this period\n• After 30 days, it will be permanently deleted\n\nThis is a reversible action. You can restore it later if needed.`,
+        buttons: [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => {},
+          },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await apiService.deleteConversation(conversation.id, false);
+                // If deleting current conversation, clear it
+                if (conversationId === conversation.id) {
+                  startNewConversation();
+                }
+                // Reload conversations
+                await loadConversations();
+                showAlert({
+                  title: 'Success',
+                  message: 'Conversation deleted successfully. You can restore it within 30 days by contacting support.',
+                  buttons: [{ text: 'OK' }],
+                });
+              } catch (err: any) {
+                showAlert({
+                  title: 'Error',
+                  message: err.message || 'Failed to delete conversation. Please try again.',
+                  buttons: [{ text: 'OK' }],
+                });
+              }
+            },
+          },
+        ],
+      });
+    }
   };
 
   const getConversationPreview = (conversation: Conversation): string => {
@@ -291,6 +378,157 @@ export const ChatbotScreen: React.FC = () => {
         </View>
       </KeyboardAvoidingView>
 
+      {/* Options Menu Modal */}
+      <Modal
+        visible={showMenu}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => {
+          setShowMenu(false);
+          setIsRenaming(false);
+          setRenameText('');
+          setSelectedConversationId(null);
+        }}
+      >
+        <View style={dynamicStyles.menuOverlay}>
+          <TouchableOpacity
+            style={dynamicStyles.menuOverlayTouchable}
+            activeOpacity={1}
+            onPress={() => {
+              setShowMenu(false);
+              setIsRenaming(false);
+              setRenameText('');
+              setSelectedConversationId(null);
+            }}
+          />
+          <View style={dynamicStyles.menuContent}>
+            {isRenaming ? (
+              <View style={dynamicStyles.renameContainer}>
+                <Text style={dynamicStyles.menuTitle}>Rename Conversation</Text>
+                <TextInput
+                  style={dynamicStyles.renameInput}
+                  placeholder="Enter conversation title"
+                  placeholderTextColor={theme.textTertiary}
+                  value={renameText}
+                  onChangeText={setRenameText}
+                  autoFocus
+                  maxLength={100}
+                />
+                <View style={dynamicStyles.renameActions}>
+                  <TouchableOpacity
+                    style={[dynamicStyles.menuButtonItem, dynamicStyles.menuButtonCancel]}
+                    onPress={() => {
+                      setIsRenaming(false);
+                      setRenameText('');
+                      setSelectedConversationId(null);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={dynamicStyles.menuButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[dynamicStyles.menuButtonItem, dynamicStyles.menuButtonPrimary]}
+                    onPress={async () => {
+                      if (selectedConversationId) {
+                        try {
+                          await apiService.updateConversation(selectedConversationId, renameText.trim() || null);
+                          await loadConversations();
+                          // Update current conversation title in state
+                          setConversations(prev => prev.map(conv => 
+                            conv.id === selectedConversationId 
+                              ? { ...conv, title: renameText.trim() || null }
+                              : conv
+                          ));
+                          // If this is the currently active conversation, update it
+                          if (conversationId === selectedConversationId) {
+                            // Reload the conversation to get updated title
+                            const updatedConv = conversations.find(c => c.id === selectedConversationId);
+                            if (updatedConv) {
+                              loadConversation({ ...updatedConv, title: renameText.trim() || null });
+                            }
+                          }
+                          setIsRenaming(false);
+                          setRenameText('');
+                          setShowMenu(false);
+                          setSelectedConversationId(null);
+                        } catch (err: any) {
+                          showAlert({
+                            title: 'Error',
+                            message: err.message || 'Failed to rename conversation. Please try again.',
+                            buttons: [{ text: 'OK' }],
+                          });
+                        }
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[dynamicStyles.menuButtonText, dynamicStyles.menuButtonTextPrimary]}>Save</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <>
+                <Text style={dynamicStyles.menuTitle}>Options</Text>
+                <TouchableOpacity
+                  style={dynamicStyles.menuItem}
+                  onPress={() => {
+                    const currentConv = conversations.find(c => c.id === selectedConversationId);
+                    setRenameText(currentConv?.title || '');
+                    setIsRenaming(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={dynamicStyles.menuItemIcon}>✏️</Text>
+                  <Text style={dynamicStyles.menuItemText}>Rename</Text>
+                </TouchableOpacity>
+                <View style={dynamicStyles.menuDivider} />
+                <TouchableOpacity
+                  style={dynamicStyles.menuItem}
+                  onPress={() => {
+                    setShowMenu(false);
+                    const currentConv = conversations.find(c => c.id === selectedConversationId);
+                    if (currentConv) {
+                      showAlert({
+                        title: 'Delete Conversation',
+                        message: 'Choose how you want to delete this conversation:',
+                        buttons: [
+                          { 
+                            text: 'Cancel', 
+                            style: 'cancel',
+                            onPress: () => {
+                              setSelectedConversationId(null);
+                            },
+                          },
+                          {
+                            text: 'Soft Delete',
+                            onPress: () => {
+                              handleDeleteConversation(currentConv, false);
+                              setSelectedConversationId(null);
+                            },
+                          },
+                          {
+                            text: 'Permanent Delete',
+                            style: 'destructive',
+                            onPress: () => {
+                              handleDeleteConversation(currentConv, true);
+                              setSelectedConversationId(null);
+                            },
+                          },
+                        ],
+                      });
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={dynamicStyles.menuItemIcon}>🗑️</Text>
+                  <Text style={[dynamicStyles.menuItemText, dynamicStyles.menuItemTextDanger]}>Delete</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       {/* Conversation History Drawer - Left Side */}
       <Modal
         visible={showHistory}
@@ -343,11 +581,14 @@ export const ChatbotScreen: React.FC = () => {
                   data={conversations}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }) => (
-                    <TouchableOpacity
+                    <View
                       style={[
                         dynamicStyles.conversationItem,
                         conversationId === item.id && dynamicStyles.conversationItemActive
                       ]}
+                    >
+                      <TouchableOpacity
+                        style={dynamicStyles.conversationItemContent}
                       onPress={() => loadConversation(item)}
                       activeOpacity={0.7}
                       accessibilityRole="button"
@@ -362,6 +603,20 @@ export const ChatbotScreen: React.FC = () => {
                         {formatDate(item.updated_at)}
                       </Text>
                     </TouchableOpacity>
+                      <TouchableOpacity
+                        style={dynamicStyles.conversationMenuButton}
+                        onPress={() => {
+                          setSelectedConversationId(item.id);
+                          setRenameText(item.title || '');
+                          setShowMenu(true);
+                        }}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel="Conversation options"
+                      >
+                        <Text style={dynamicStyles.conversationMenuIcon}>⋯</Text>
+                      </TouchableOpacity>
+                    </View>
                   )}
                   style={dynamicStyles.conversationsList}
                 />
@@ -370,6 +625,18 @@ export const ChatbotScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Custom Alert */}
+      {alertConfig && (
+        <CustomAlert
+          visible={alertVisible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttons={alertConfig.buttons}
+          onDismiss={hideAlert}
+          showCloseButton={alertConfig.showCloseButton}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -639,9 +906,14 @@ const createStyles = (theme: any, insets: any) => StyleSheet.create({
     flex: 1,
   },
   conversationItem: {
-    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: theme.border,
+  },
+  conversationItemContent: {
+    flex: 1,
+    padding: 16,
   },
   conversationItemActive: {
     backgroundColor: theme.primary + '15',
@@ -655,5 +927,111 @@ const createStyles = (theme: any, insets: any) => StyleSheet.create({
   conversationDate: {
     fontSize: 12,
     color: theme.textSecondary,
+  },
+  conversationMenuButton: {
+    padding: 16,
+    paddingLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  conversationMenuIcon: {
+    fontSize: 20,
+    color: theme.text,
+    fontWeight: '600',
+  },
+  // Options Menu Styles
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuOverlayTouchable: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  menuContent: {
+    backgroundColor: theme.cardBackground,
+    borderRadius: 16,
+    padding: 20,
+    width: '85%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  menuTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.text,
+    marginBottom: 16,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+  },
+  menuItemIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: theme.text,
+    fontWeight: '500',
+  },
+  menuItemTextDanger: {
+    color: '#FF3B30',
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: theme.border,
+    marginVertical: 8,
+  },
+  renameContainer: {
+    gap: 16,
+  },
+  renameInput: {
+    backgroundColor: theme.background,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: theme.text,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  renameActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  menuButtonItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  menuButtonCancel: {
+    backgroundColor: theme.background,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  menuButtonPrimary: {
+    backgroundColor: theme.primary,
+  },
+  menuButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.text,
+  },
+  menuButtonTextPrimary: {
+    color: '#FFFFFF',
   },
 });
