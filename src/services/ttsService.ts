@@ -14,6 +14,7 @@ export interface TTSOptions {
   language?: string;
   rate?: number;
   voice?: string;
+  shloka_id?: string; // Optional: Use shloka_id for caching (recommended)
 }
 
 class TTSService {
@@ -24,6 +25,7 @@ class TTSService {
   /**
    * Convert text to speech using backend API
    * Backend uses Google TTS (free) which works great for transliteration
+   * If shloka_id is provided, uses cached audio (faster, saves API costs)
    */
   async speak(text: string, options?: TTSOptions): Promise<void> {
     try {
@@ -31,19 +33,30 @@ class TTSService {
       await this.stop();
 
       console.log('TTS: Requesting audio from backend...');
+      if (options?.shloka_id) {
+        console.log('TTS: Using shloka_id for caching:', options.shloka_id);
+      }
       
       // Call backend TTS endpoint
       const baseUrl = apiService.getBaseUrl();
+      const requestBody: any = {
+        language: options?.language || 'hi-IN',
+        rate: options?.rate || 0.45,
+      };
+      
+      // Prioritize shloka_id for caching, fallback to text
+      if (options?.shloka_id) {
+        requestBody.shloka_id = options.shloka_id;
+      } else {
+        requestBody.text = text;
+      }
+      
       const response = await fetch(`${baseUrl}/api/tts/speak`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          text: text,
-          language: options?.language || 'en-US',
-          rate: options?.rate || 0.45,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {

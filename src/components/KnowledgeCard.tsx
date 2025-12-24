@@ -272,8 +272,13 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item }) => {
           setIsSpeaking(true);
           setIsPaused(false);
           
-          // Use backend TTS service (Google TTS - free, no API key needed)
-          await ttsService.speak(textToSpeak, { language: 'en-US', rate: 0.45 });
+          // Use backend TTS service with shloka_id for caching (faster, saves API costs)
+          // Pass shloka_id if available, otherwise fallback to text
+          await ttsService.speak(textToSpeak, { 
+            language: 'hi-IN', 
+            rate: 0.45,
+            shloka_id: item.id // Use shloka ID for caching
+          });
           console.log('TTS: Speak command completed');
           
           // Sync state with service

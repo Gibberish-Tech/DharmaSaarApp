@@ -14,7 +14,7 @@
 import { Platform } from 'react-native';
 
 // Set to true to force using production API even in development mode (useful for testing)
-const FORCE_PRODUCTION_API = true;
+const FORCE_PRODUCTION_API = false;
 
 // Get the appropriate development URL based on platform
 const getDevelopmentUrl = (): string => {
